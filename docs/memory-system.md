@@ -1,71 +1,71 @@
-# Sistema de Memória Persistente — AITEAM-X
+# Persistent Memory System — @inosx/agent-memory
 
-**Versão:** 3.0
-**Atualizado:** 2026-03-24
-**Status:** Implementado e em produção
+**Version:** 3.0
+**Updated:** 2026-03-24
+**Status:** Implemented and in production
 
 ---
 
-## 1. Visão Geral
+## 1. Overview
 
-O sistema de memória resolve o problema de *context death*: a cada nova sessão, agentes de IA perdem todo conhecimento acumulado. A solução é uma arquitetura de cinco camadas complementares que persiste, estrutura, busca, injeta e compacta memória automaticamente.
+The memory system solves the *context death* problem: with every new session, AI agents lose all accumulated knowledge. The solution is a five-layer complementary architecture that persists, structures, searches, injects, and compacts memory automatically.
 
 ```
 ┌──────────────────────────────────────────────────┐
-│         Camada 5: Compactação Automática          │
-│  compact.ts limpa checkpoints expirados,          │
-│  recorta conversas, consolida vault e reindexe    │
+│         Layer 5: Automatic Compaction             │
+│  compact.ts cleans expired checkpoints,           │
+│  trims conversations, consolidates vault & reindex│
 ├──────────────────────────────────────────────────┤
-│         Camada 4: Injeção de Contexto             │
-│  inject.ts compõe memória relevante               │
-│  e a injeta no prompt de novas sessões            │
+│         Layer 4: Context Injection                │
+│  inject.ts assembles relevant memory              │
+│  and injects it into new session prompts          │
 ├──────────────────────────────────────────────────┤
-│         Camada 3: Busca BM25                      │
-│  MiniSearch indexa o vault e recupera             │
-│  decisions/lessons relevantes ao comando          │
+│         Layer 3: BM25 Search                      │
+│  MiniSearch indexes the vault and retrieves       │
+│  decisions/lessons relevant to the command        │
 ├──────────────────────────────────────────────────┤
-│         Camada 2: Memory Vault                    │
-│  Storage estruturado por agente e categoria       │
-│  Markdown com frontmatter de ID e tags            │
+│         Layer 2: Memory Vault                     │
+│  Structured storage by agent and category         │
+│  Markdown with ID frontmatter and tags            │
 ├──────────────────────────────────────────────────┤
-│         Camada 1: Persistência de Sessões         │
-│  Chat sessions + histórico de conversas           │
-│  Checkpoints para recovery                        │
+│         Layer 1: Session Persistence              │
+│  Chat sessions + conversation history             │
+│  Checkpoints for recovery                         │
 └──────────────────────────────────────────────────┘
 ```
 
-### Fluxo de dados simplificado
+### Simplified data flow
 
 ```mermaid
 flowchart LR
-    UI["Frontend\n(MainContent)"] -->|auto-save 30s| CONV["Conversas\n(.memory/conversations/)"]
+    UI["Frontend\n(MainContent)"] -->|auto-save 30s| CONV["Conversations\n(.memory/conversations/)"]
     UI -->|checkpoint 30s| CP["Checkpoints\n(.vault/checkpoints/)"]
-    UI -->|fechar agente| HO["Handoff\n(vault/handoffs.md)"]
+    UI -->|close agent| HO["Handoff\n(vault/handoffs.md)"]
     HO --> VAULT["Memory Vault\n(.memory/{agentId}/)"]
-    COMPACT["Compactação\n(compact.ts)"] -->|extração heurística| VAULT
-    COMPACT -->|recorta| CONV
-    COMPACT -->|limpa| CP
-    VAULT --> SEARCH["Índice BM25\n(search.ts)"]
-    SEARCH --> INJECT["Injeção\n(inject.ts)"]
+    COMPACT["Compaction\n(compact.ts)"] -->|heuristic extraction| VAULT
+    COMPACT -->|trims| CONV
+    COMPACT -->|cleans| CP
+    VAULT --> SEARCH["BM25 Index\n(search.ts)"]
+    SEARCH --> INJECT["Injection\n(inject.ts)"]
     VAULT --> INJECT
-    INJECT -->|prompt enriquecido| AGENT["Cursor Agent CLI"]
+    INJECT -->|enriched prompt| AGENT["Agent CLI"]
 ```
 
 ---
 
-## 2. Camada 1: Persistência de Sessões
+## 2. Layer 1: Session Persistence
 
 ### Chat Sessions (`docs/chat-sessions.json`)
 
-Mapeia `agentId` → `chatId` do Cursor CLI para permitir retomar sessões com `--resume`.
+Maps `agentId` → `chatId` to allow resuming sessions with `--resume`.
 
 ```json
 { "bmad-master": "chat_abc123", "dev": "chat_def456" }
 ```
 
-### Histórico de Conversas (`.memory/conversations/`)
+### Conversation History (`.memory/conversations/`)
 
-Auto-salvo a cada 30s via `setInterval` no frontend e no `beforeunload` via `sendBeacon`.
+Auto-saved every 30s via `setInterval` on the frontend and on `beforeunload` via `sendBeacon`.
 
 ```
 .memory/conversations/
@@ -74,7 +74,7 @@ Auto-salvo a cada 30s via `setInterval` no frontend e no `beforeunload` via `sen
 └── tech-writer.json
 ```
 
-Formato de cada arquivo:
+Format of each file:
 
 ```json
 {
@@ -89,7 +89,7 @@ Formato de cada arquivo:
 
 ### Checkpoints (`.memory/.vault/checkpoints/{agentId}.json`)
 
-Salvos automaticamente a cada 30s pelo frontend para cada agente com bubble aberta. Também salvos via `sendBeacon` ao fechar o navegador. Válidos por 7 dias (`SEVEN_DAYS_MS = 7 * 24 * 3_600_000`). Checkpoints expirados são removidos automaticamente pela Camada 5 (Compactação).
+Automatically saved every 30s by the frontend for each agent with an open bubble. Also saved via `sendBeacon` when closing the browser. Valid for 7 days (`SEVEN_DAYS_MS = 7 * 24 * 3_600_000`). Expired checkpoints are automatically removed by Layer 5 (Compaction).
 
 ```json
 {
@@ -101,69 +101,69 @@ Salvos automaticamente a cada 30s pelo frontend para cada agente com bubble aber
 }
 ```
 
-Cada checkpoint armazena as **últimas 50 mensagens** da conversa.
+Each checkpoint stores the **last 50 messages** of the conversation.
 
-### API de Sessão (`lib/memory/session.ts`)
+### Session API (`lib/memory/session.ts`)
 
 ```typescript
-checkpoint(agentId, messages, chatId?, modelId?)  // salva snapshot em .vault/checkpoints/
-recover(agentId)                                   // lê checkpoint se < 7 dias, null caso contrário
-sleep(agentId, messages, summary)                  // salva handoff no vault + checkpoint
+checkpoint(agentId, messages, chatId?, modelId?)  // saves snapshot to .vault/checkpoints/
+recover(agentId)                                   // reads checkpoint if < 7 days, null otherwise
+sleep(agentId, messages, summary)                  // saves handoff to vault + checkpoint
 ```
 
-**Fluxo `recover`:**
-- Checkpoint válido (< 7 dias) → `InjectContext.recovering = true` → injetado no prompt
-- Checkpoint expirado ou ausente → sessão fresca
+**`recover` flow:**
+- Valid checkpoint (< 7 days) → `InjectContext.recovering = true` → injected into prompt
+- Expired or missing checkpoint → fresh session
 
 ---
 
-## 3. Camada 2: Memory Vault
+## 3. Layer 2: Memory Vault
 
-### Estrutura de Arquivos
+### File Structure
 
 ```
 .memory/
-├── _project.md                    # Contexto global do projeto (injetado em todos os agentes)
-├── {agentId}/                     # Diretório por agente
-│   ├── decisions.md               # Decisões técnicas e arquiteturais
-│   ├── lessons.md                 # Lições aprendidas e bugs corrigidos
-│   ├── handoffs.md                # Resumos de sessão (mais recente primeiro)
-│   ├── tasks.md                   # Tarefas abertas (checkboxes [ ] / [x])
-│   └── projects.md                # Contexto de projeto por agente
-├── conversations/                 # Histórico raw (gitignored)
+├── _project.md                    # Global project context (injected into all agents)
+├── {agentId}/                     # Directory per agent
+│   ├── decisions.md               # Technical and architectural decisions
+│   ├── lessons.md                 # Lessons learned and bugs fixed
+│   ├── handoffs.md                # Session summaries (newest first)
+│   ├── tasks.md                   # Open tasks (checkboxes [ ] / [x])
+│   └── projects.md                # Per-agent project context
+├── conversations/                 # Raw history (gitignored)
 └── .vault/
-    ├── index.json                 # Índice BM25 persistido do MiniSearch
-    ├── compact-log.json           # Resultado da última compactação
-    └── checkpoints/{agentId}.json # Checkpoints de sessão
+    ├── index.json                 # Persisted BM25 index from MiniSearch
+    ├── compact-log.json           # Last compaction result
+    └── checkpoints/{agentId}.json # Session checkpoints
 ```
 
-### Categorias (`VaultCategory`)
+### Categories (`VaultCategory`)
 
-| Categoria | Uso |
-|-----------|-----|
-| `decisions` | Decisões técnicas tomadas ("decidimos usar SSE", "vamos adotar...") |
-| `lessons` | Lições aprendidas, bugs corrigidos, insights ("aprendi", "o problema era...") |
-| `handoffs` | Resumo de cada sessão — gerado pelo frontend ao fechar o agente |
-| `tasks` | Tarefas abertas no formato `- [ ] descrição` |
-| `projects` | Contexto do projeto (stack, arquitetura, objetivos) |
+| Category | Usage |
+|----------|-------|
+| `decisions` | Technical decisions made ("we decided to use SSE", "going with...") |
+| `lessons` | Lessons learned, bugs fixed, insights ("we learned", "the problem was...") |
+| `handoffs` | Session summary — generated by the frontend when closing the agent |
+| `tasks` | Open tasks in `- [ ] description` format |
+| `projects` | Project context (stack, architecture, goals) |
 
-### Formato de Entrada no Markdown
+### Markdown Entry Format
 
 ```markdown
 <!-- id:1773679871839 -->
 ## 2026-03-16T16:51 · #react #typescript #components
 
-Conteúdo da memória em markdown livre.
+Memory content in free-form markdown.
 
 ---
 ```
 
-- `id` é `Date.now()` garantindo unicidade (com incremento monotônico para colisões)
-- Tags extraídas automaticamente via `/#(\w+)/g` do conteúdo
-- Entradas ordenadas por `id` decrescente (mais recente primeiro)
-- Tags `#compacted` e `#auto-extract` indicam entradas criadas pela Camada 5 (compactação)
+- `id` is `Date.now()` ensuring uniqueness (with monotonic increment for collisions)
+- Tags automatically extracted via `/#(\w+)/g` from content
+- Entries sorted by `id` descending (newest first)
+- Tags `#compacted` and `#auto-extract` indicate entries created by Layer 5 (compaction)
 
-### API do Vault (`lib/memory/vault.ts`)
+### Vault API (`lib/memory/vault.ts`)
 
 ```typescript
 readCategory(agentId, category): Promise<VaultEntry[]>
@@ -174,9 +174,9 @@ listAgents(): Promise<string[]>
 getCategoryCounts(agentId): Promise<Record<VaultCategory, number>>
 ```
 
-### Serialização de Escritas
+### Write Serialization
 
-Todas as escritas no vault são serializadas via `writeQueue` (Promise chain). Isso evita race conditions quando múltiplas operações concorrentes tentam modificar o mesmo arquivo markdown:
+All vault writes are serialized via `writeQueue` (Promise chain). This prevents race conditions when multiple concurrent operations attempt to modify the same markdown file:
 
 ```typescript
 export let writeQueue: Promise<void> = Promise.resolve();
@@ -188,26 +188,26 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
 }
 ```
 
-Falhas em uma operação não bloqueiam a fila — a cadeia avança independentemente.
+Failures in one operation do not block the queue — the chain advances regardless.
 
-### Atualização do Índice de Busca
+### Search Index Updates
 
-Após cada `appendEntry` e `deleteEntry`, o vault faz um `dynamic import("./search")` para atualizar o índice BM25. Erros nessa atualização são silenciados — o índice será reconstruído na próxima compactação.
+After each `appendEntry` and `deleteEntry`, the vault performs a `dynamic import("./search")` to update the BM25 index. Errors in this update are silenced — the index will be rebuilt at the next compaction.
 
 ---
 
-## 4. Camada 3: Busca BM25 (`lib/memory/search.ts`)
+## 4. Layer 3: BM25 Search (`lib/memory/search.ts`)
 
-O índice MiniSearch é construído sobre todas as entradas do vault. Persistido em `.memory/.vault/index.json` para evitar reconstrução a cada request.
+The MiniSearch index is built over all vault entries. Persisted to `.memory/.vault/index.json` to avoid rebuilding on every request.
 
-### Funcionamento
+### How it works
 
-1. Na primeira busca: lê todos os arquivos do vault e constrói o índice
-2. Nas buscas seguintes: carrega `index.json` do disco
-3. Ao criar nova entrada (`appendEntry`): atualiza o índice via `updateIndex(entry)`
-4. Ao deletar entrada (`deleteEntry`): remove do índice via `removeFromIndex(id)`
+1. On first search: reads all vault files and builds the index
+2. On subsequent searches: loads `index.json` from disk
+3. When creating a new entry (`appendEntry`): updates the index via `updateIndex(entry)`
+4. When deleting an entry (`deleteEntry`): removes from the index via `removeFromIndex(id)`
 
-### API de Busca
+### Search API
 
 ```typescript
 search(query, { agentId?, category?, limit? }): Promise<SearchResult[]>
@@ -220,71 +220,71 @@ buildIndex(): Promise<void>
 interface SearchResult {
   entry: VaultEntry;
   score: number;
-  snippet: string;  // ~120 chars com o trecho relevante
+  snippet: string;  // ~120 chars with the relevant excerpt
 }
 ```
 
-### Configuração do MiniSearch
+### MiniSearch Configuration
 
-| Parâmetro | Valor |
+| Parameter | Value |
 |-----------|-------|
-| Campos indexados | `content`, `tags` |
-| Campos armazenados | `id`, `date`, `content`, `tags`, `agentId`, `category` |
+| Indexed fields | `content`, `tags` |
+| Stored fields | `id`, `date`, `content`, `tags`, `agentId`, `category` |
 | Fuzzy matching | `0.2` |
 | Prefix search | `true` |
-| Limite padrão | `10` resultados |
+| Default limit | `10` results |
 
-### Construção do Snippet
+### Snippet Construction
 
-O snippet é construído encontrando a primeira ocorrência de uma palavra do query no conteúdo. Uma janela de ~30 caracteres antes e 120 caracteres totais é extraída para dar contexto ao resultado.
+The snippet is built by finding the first occurrence of a query word in the content. A window of ~30 characters before and 120 total characters is extracted to provide context for the result.
 
 ---
 
-## 5. Camada 4: Injeção de Contexto (`lib/memory/inject.ts`)
+## 5. Layer 4: Context Injection (`lib/memory/inject.ts`)
 
-Chamado em `POST /api/agents/command` ao iniciar uma nova sessão de chat.
+Called in `POST /api/agents/command` when starting a new chat session.
 
 ### `buildContext(agentId, command)`
 
-Monta o `InjectContext` com budget de 2.000 tokens:
+Assembles the `InjectContext` with a 2,000 token budget:
 
-| Fonte | Método | Limite |
-|-------|--------|--------|
-| Contexto global do projeto | `_project.md` (leitura direta) | sem limite |
-| Último handoff | `readCategory(agentId, "handoffs")[0]` | 1 entrada |
-| Decisões relevantes | `search(command, { category: "decisions" })` | top 3 |
-| Lições relevantes | `search(command, { category: "lessons" })` | top 2 |
-| Tarefas abertas | `readCategory(agentId, "tasks")` filtrado por `[ ]` | todas |
-| Recovery snapshot | `recover(agentId)` | últimas 3 msgs |
+| Source | Method | Limit |
+|--------|--------|-------|
+| Global project context | `_project.md` (direct read) | unlimited |
+| Latest handoff | `readCategory(agentId, "handoffs")[0]` | 1 entry |
+| Relevant decisions | `search(command, { category: "decisions" })` | top 3 |
+| Relevant lessons | `search(command, { category: "lessons" })` | top 2 |
+| Open tasks | `readCategory(agentId, "tasks")` filtered by `[ ]` | all |
+| Recovery snapshot | `recover(agentId)` | last 3 msgs |
 
-**Estimativa de tokens:** `Math.ceil(text.length / 4)` — heurística simples baseada na proporção média caracteres/tokens.
+**Token estimation:** `Math.ceil(text.length / 4)` — simple heuristic based on average character/token ratio.
 
-**Corte por token budget** (ordem de descarte se > 2.000 tokens):
-1. Lessons descartadas primeiro
-2. Decisions descartadas em segundo
-3. Handoff descartado por último (mais valioso)
+**Token budget trimming** (discard order when > 2,000 tokens):
+1. Lessons discarded first
+2. Decisions discarded second
+3. Handoff discarded last (most valuable)
 
 ### `buildTextBlock(ctx)`
 
-Converte `InjectContext` em bloco de texto injetado no prompt:
+Converts `InjectContext` into a text block injected into the prompt:
 
 ```
 ## MEMORY CONTEXT
 
 Project:
-[conteúdo de _project.md]
+[_project.md content]
 
 Last Session:
-[último handoff]
+[latest handoff]
 
 Relevant Decisions:
-- [snippet de decisão relevante]
+- [relevant decision snippet]
 
 Relevant Lessons:
-- [snippet de lição relevante]
+- [relevant lesson snippet]
 
 Open Tasks:
-- [ ] tarefa aberta
+- [ ] open task
 
 Recovering previous session:
 [user]: ...
@@ -295,7 +295,7 @@ Recovering previous session:
 
 ### `buildMemoryInstructions(agentId)`
 
-Gera instruções para que o agente saiba onde escrever memórias diretamente no filesystem:
+Generates instructions so the agent knows where to write memories directly to the filesystem:
 
 ```
 ## MEMORY: When asked to save/learn/remember, WRITE to files (don't just say you will).
@@ -304,36 +304,36 @@ Shared: .memory/_project.md | Personal: .memory/{agentId}/{decisions,lessons,tas
 
 ### `buildProjectScopeBlock(projectName, workspace)`
 
-Quando o AITEAM-X está instalado dentro de outro projeto, injeta um bloco de escopo para que agentes analisem o projeto host e não a infraestrutura do dashboard.
+When installed inside another project, injects a scope block so agents analyze the host project rather than the dashboard infrastructure.
 
-### Fluxo completo no pipeline do agente
+### Full agent pipeline flow
 
 ```mermaid
 flowchart TD
-    CMD["POST /api/agents/command"] --> CHAT{"chatId existe?"}
-    CHAT -->|Não| NEW["Nova sessão"]
+    CMD["POST /api/agents/command"] --> CHAT{"chatId exists?"}
+    CHAT -->|No| NEW["New session"]
     NEW --> BC["buildContext(agentId, command)"]
     BC --> BT["buildTextBlock(ctx)"]
     BT --> MDC["getAgentMdcContent()"]
-    MDC --> PROMPT["prompt = persona + memória + comando"]
-    CHAT -->|Sim| RESUME["Sessão existente"]
-    RESUME --> SIMPLE["prompt = comando do usuário"]
-    PROMPT --> SPAWN["spawn cursor-agent"]
+    MDC --> PROMPT["prompt = persona + memory + command"]
+    CHAT -->|Yes| RESUME["Existing session"]
+    RESUME --> SIMPLE["prompt = user command"]
+    PROMPT --> SPAWN["spawn agent CLI"]
     SIMPLE --> SPAWN
     SPAWN --> SSE["Stream SSE → frontend"]
 ```
 
 ---
 
-## 6. Camada 5: Compactação Automática (`lib/memory/compact.ts`)
+## 6. Layer 5: Automatic Compaction (`lib/memory/compact.ts`)
 
-O sistema de compactação resolve o crescimento indefinido do vault. Um endpoint (`POST /api/memory/compact`) executa cinco etapas sequenciais. O frontend dispara a compactação automaticamente a cada 10 minutos.
+The compaction system addresses unbounded vault growth. An endpoint (`POST /api/memory/compact`) executes five sequential steps. The frontend triggers compaction automatically every 10 minutes.
 
-### Trigger automático (frontend)
+### Automatic trigger (frontend)
 
-O `MainContent.tsx` verifica na montagem se a última compactação foi há mais de 10 minutos. Se sim, executa `POST /api/memory/compact`. Um `setInterval` de 10 minutos mantém a compactação periódica enquanto o dashboard estiver aberto.
+`MainContent.tsx` checks on mount whether the last compaction was more than 10 minutes ago. If so, it runs `POST /api/memory/compact`. A 10-minute `setInterval` maintains periodic compaction while the dashboard is open.
 
-### As cinco etapas (Steps A–E)
+### The five steps (Steps A–E)
 
 ```mermaid
 flowchart TD
@@ -342,89 +342,89 @@ flowchart TD
     B --> C["Step C\ncapVaultEntries()"]
     C --> D["Step D\nrebuildSearchIndex()"]
     D --> E["Step E\ncleanLegacyFiles()"]
-    E --> LOG["Persiste compact-log.json"]
+    E --> LOG["Persist compact-log.json"]
 ```
 
-#### Step A: Limpeza de checkpoints expirados
+#### Step A: Expired checkpoint cleanup
 
-Remove checkpoints em `.memory/.vault/checkpoints/` com mais de 7 dias. Checkpoints corrompidos (JSON inválido) também são removidos.
+Removes checkpoints in `.memory/.vault/checkpoints/` older than 7 days. Corrupted checkpoints (invalid JSON) are also removed.
 
-| Parâmetro | Valor |
+| Parameter | Value |
 |-----------|-------|
-| Threshold | 7 dias |
-| Critério | `Date.now() - checkpoint.savedAt > SEVEN_DAYS_MS` |
-| Checkpoints corrompidos | Removidos incondicionalmente |
+| Threshold | 7 days |
+| Criteria | `Date.now() - checkpoint.savedAt > SEVEN_DAYS_MS` |
+| Corrupted checkpoints | Removed unconditionally |
 
-#### Step B: Extração heurística e recorte de conversas
+#### Step B: Heuristic extraction and conversation trimming
 
-Para **todas** as conversas em `.memory/conversations/`, o sistema extrai insights via pattern matching. Conversas com mais de 20 mensagens são adicionalmente recortadas. Um arquivo `processed-conversations.json` rastreia o hash de cada conversa para evitar reprocessamento redundante.
+For **all** conversations in `.memory/conversations/`, the system extracts insights via pattern matching. Conversations with more than 20 messages are additionally trimmed. A `processed-conversations.json` file tracks the hash of each conversation to avoid redundant reprocessing.
 
-Para conversas com mais de 20 mensagens:
+For conversations with more than 20 messages:
 
-1. **Separa mensagens** em "antigas" (removidas) e "recentes" (últimas 20, preservadas)
-2. **Extrai insights das mensagens antigas** usando pattern matching em linhas do agente:
-   - **Decisões**: detectadas por regex (`/\bdecid/i`, `/\bescolh/i`, `/\bwill use\b/i`, etc.)
-   - **Lições**: detectadas por regex (`/\blearned\b/i`, `/\bimportante/i`, `/\bdiscovery/i`, etc.)
-   - Máximo 10 decisões e 10 lições por conversa recortada
-   - Cada insight limitado a 300 caracteres
-   - Apenas linhas com mais de 15 caracteres são analisadas
-3. **Persiste os insights** no vault via `appendEntry()` com tags `["compacted", "auto-extract"]`
-4. **Gera um handoff compactado** com as últimas 3 mensagens do agente na porção removida, com tag `["compacted", "auto-handoff"]`
-5. **Reescreve o arquivo de conversa** contendo apenas as 20 mensagens mais recentes
+1. **Separates messages** into "old" (removed) and "recent" (last 20, preserved)
+2. **Extracts insights from old messages** using pattern matching on agent lines:
+   - **Decisions**: detected by regex (`/\bdecid/i`, `/\bchose\b/i`, `/\bwill use\b/i`, etc.)
+   - **Lessons**: detected by regex (`/\blearned\b/i`, `/\bimportant/i`, `/\bdiscovery/i`, etc.)
+   - Maximum 10 decisions and 10 lessons per trimmed conversation
+   - Each insight limited to 300 characters
+   - Only lines with more than 15 characters are analyzed
+3. **Persists insights** to the vault via `appendEntry()` with tags `["compacted", "auto-extract"]`
+4. **Generates a compacted handoff** with the last 3 agent messages from the removed portion, tagged `["compacted", "auto-handoff"]`
+5. **Rewrites the conversation file** containing only the 20 most recent messages
 
-| Parâmetro | Valor |
+| Parameter | Value |
 |-----------|-------|
 | MAX_CONVERSATION_MESSAGES | 20 |
-| Patterns de decisão | 10 regex (PT + EN) |
-| Patterns de lição | 10 regex (PT + EN) |
-| Max insights por conversa | 10 decisões + 10 lições |
-| Limite por insight | 300 chars |
-| Comprimento mínimo de linha | 15 chars |
+| Decision patterns | 10 regex (PT + EN) |
+| Lesson patterns | 10 regex (PT + EN) |
+| Max insights per conversation | 10 decisions + 10 lessons |
+| Limit per insight | 300 chars |
+| Minimum line length | 15 chars |
 
-**Regex de decisão:**
+**Decision regex:**
 ```
 /\bdecid/i, /\bchose\b/i, /\bwill use\b/i, /\bdecisão/i,
 /\bescolh/i, /\boptamos/i, /\badotamos/i, /\bvamos usar\b/i,
 /\bwent with\b/i, /\bsettled on\b/i
 ```
 
-**Regex de lição:**
+**Lesson regex:**
 ```
 /\blearned\b/i, /\bimportant/i, /\bnote:/i, /\baprendemos/i,
 /\bimportante/i, /\blição/i, /\bdiscovery/i, /\binsight/i,
 /\bdescobr/i, /\bobserv/i
 ```
 
-#### Step C: Consolidação de categorias do vault
+#### Step C: Vault category consolidation
 
-Para cada agente e cada categoria, se o número de entradas excede 30:
+For each agent and each category, if the number of entries exceeds 30:
 
-1. **Mantém as 20 mais recentes**
-2. **Consolida as restantes** em uma única entrada-resumo com prefixo "Compacted N older entries:"
-3. Cada entrada consolidada é representada como `- [data] preview (200 chars)`
-4. **Reescreve o arquivo de categoria** com 21 entradas (20 originais + 1 resumo)
+1. **Keeps the 20 most recent**
+2. **Consolidates the rest** into a single summary entry prefixed with "Compacted N older entries:"
+3. Each consolidated entry is represented as `- [date] preview (200 chars)`
+4. **Rewrites the category file** with 21 entries (20 originals + 1 summary)
 
-| Parâmetro | Valor |
+| Parameter | Value |
 |-----------|-------|
 | MAX_VAULT_ENTRIES_PER_CATEGORY | 30 (trigger) |
-| KEEP_VAULT_ENTRIES | 20 (retidas) |
+| KEEP_VAULT_ENTRIES | 20 (retained) |
 
-#### Step D: Reconstrução do índice de busca
+#### Step D: Search index rebuild
 
-Deleta `index.json` e chama `buildIndex()` via dynamic import de `search.ts`. Garante consistência após as operações de trimming e capping que alteram o vault diretamente.
+Deletes `index.json` and calls `buildIndex()` via dynamic import from `search.ts`. Ensures consistency after trimming and capping operations that modify the vault directly.
 
-#### Step E: Limpeza de arquivos legados
+#### Step E: Legacy file cleanup
 
-Remove dois tipos de arquivo:
+Removes two types of files:
 
-1. **Arquivos `.md.bak`**: gerados pelo `migrate.ts` durante a migração flat → vault
-2. **Arquivos `.md` flat de agentes**: removidos quando já existe um diretório vault correspondente
+1. **`.md.bak` files**: generated by `migrate.ts` during flat → vault migration
+2. **Flat agent `.md` files**: removed when a corresponding vault directory already exists
 
-### API de Compactação
+### Compaction API
 
 #### `GET /api/memory/compact`
 
-Retorna o resultado da última compactação executada (lido de `.vault/compact-log.json`).
+Returns the result of the last compaction run (read from `.vault/compact-log.json`).
 
 ```json
 {
@@ -441,96 +441,96 @@ Retorna o resultado da última compactação executada (lido de `.vault/compact-
 
 #### `POST /api/memory/compact`
 
-Executa a compactação completa. **Restrito a localhost** (rejeita requests com `x-forwarded-for` ou `x-real-ip` externo).
+Runs full compaction. **Restricted to localhost** (rejects requests with external `x-forwarded-for` or `x-real-ip`).
 
 ---
 
-## 7. Geração de Handoffs
+## 7. Handoff Generation
 
-Handoffs são gerados pelo frontend (`MainContent.tsx`) ao fechar a janela de chat de um agente.
+Handoffs are generated by the frontend (`MainContent.tsx`) when closing an agent's chat window.
 
-### Fluxo de fechamento
+### Closing flow
 
 ```mermaid
 sequenceDiagram
-    participant U as Usuário
+    participant U as User
     participant FE as MainContent.tsx
     participant CP as /api/memory/checkpoint
     participant VL as /api/memory/vault
 
-    U->>FE: Fecha bubble (×) ou drawer
-    FE->>FE: Filtra mensagens não-internas
+    U->>FE: Close bubble (×) or drawer
+    FE->>FE: Filter non-internal messages
     FE->>CP: POST checkpoint (agentId, messages, modelId)
     FE->>FE: saveHandoffToVault()
-    FE->>FE: Formata últimas 6 mensagens
+    FE->>FE: Format last 6 messages
     FE->>VL: POST entry (category: "handoffs", tags: auto-handoff, session-close)
     FE->>FE: Dismiss bubble/drawer
 ```
 
-### Formato do handoff automático
+### Automatic handoff format
 
-O `saveHandoffToVault` extrai as últimas 6 mensagens da conversa, formata cada uma como `[User/Agent]: texto (até 200 chars)`, e salva como entrada no vault com tags `auto-handoff` e `session-close`.
+`saveHandoffToVault` extracts the last 6 messages from the conversation, formats each as `[User/Agent]: text (up to 200 chars)`, and saves as a vault entry with tags `auto-handoff` and `session-close`.
 
-### Extração de insights ao fechar chat
+### Insight extraction on chat close
 
-Além do handoff, o frontend também extrai decisions e lessons de **toda a conversa** usando os mesmos padrões heurísticos da compactação (regex PT+EN: `decidimos`, `escolhemos`, `will use`, `recomendação`, `stack principal`, `aprendemos`, `lição`, `risco`, etc.). Os insights extraídos são salvos como entradas no vault do agente com tags `auto-extract` e `session-close`.
+In addition to the handoff, the frontend also extracts decisions and lessons from the **entire conversation** using the same heuristic patterns as compaction (PT+EN regex: `decidimos`, `escolhemos`, `will use`, `recommendation`, `stack principal`, `aprendemos`, `lesson`, `risk`, etc.). Extracted insights are saved as vault entries for the agent with tags `auto-extract` and `session-close`.
 
 ---
 
-## 8. Migração Flat → Vault (`lib/memory/migrate.ts`)
+## 8. Flat → Vault Migration (`lib/memory/migrate.ts`)
 
-Converte arquivos de memória no formato antigo (flat `.md` por agente) para a estrutura vault por diretório/categoria.
+Converts memory files from the old format (flat `.md` per agent) to the vault directory/category structure.
 
-### Fluxo
+### Flow
 
-1. Varre `.memory/` buscando arquivos `.md` (excluindo `_` e `.` prefixos)
-2. Para cada arquivo: quebra em seções `## Título`
-3. Classifica cada seção em uma `VaultCategory` via `SECTION_MAP` (PT + EN, com fuzzy match)
-4. Persiste cada seção como entrada no vault via `appendEntry()`
-5. Renomeia o arquivo original para `.md.bak` (idempotência: `.bak` existente ou diretório vault já criado → skip)
+1. Scans `.memory/` for `.md` files (excluding `_` and `.` prefixes)
+2. For each file: splits into `## Title` sections
+3. Classifies each section into a `VaultCategory` via `SECTION_MAP` (PT + EN, with fuzzy match)
+4. Persists each section as a vault entry via `appendEntry()`
+5. Renames the original file to `.md.bak` (idempotent: existing `.bak` or already-created vault directory → skip)
 
-### Mapeamento de seções
+### Section mapping
 
-| Seção (header) | Categoria vault |
-|----------------|----------------|
-| Decisões, Decisões Técnicas, Decisions | `decisions` |
-| Aprendizados, Notas de Sessão, Lessons, Findings, Notes | `lessons` |
-| Tarefas, Tasks | `tasks` |
-| Contexto, Contexto de Projeto, Context, Projects | `projects` |
+| Section (header) | Vault category |
+|------------------|----------------|
+| Decisions, Technical Decisions | `decisions` |
+| Lessons, Findings, Notes, Session Notes | `lessons` |
+| Tasks | `tasks` |
+| Context, Project Context, Projects | `projects` |
 | Handoffs | `handoffs` |
-| *(fallback para qualquer seção não reconhecida)* | `lessons` |
+| *(fallback for any unrecognized section)* | `lessons` |
 
 ### API
 
-`POST /api/memory/migrate` — restrito a localhost. Retorna `{ migrated: string[], skipped: string[] }`.
+`POST /api/memory/migrate` — restricted to localhost. Returns `{ migrated: string[], skipped: string[] }`.
 
 ---
 
-## 9. APIs REST
+## 9. REST APIs
 
-| Rota | Método | Descrição |
-|------|--------|-----------|
-| `/api/memory` | GET | Carrega conversas (todas ou por agentId) |
-| `/api/memory` | POST | Salva conversas, apêndice de memória, init project |
-| `/api/memory/vault` | GET | Lista agentes, conta categorias, lê entradas |
-| `/api/memory/vault` | POST | Cria nova entrada |
-| `/api/memory/vault` | PUT | Atualiza entrada existente |
-| `/api/memory/vault` | DELETE | Remove entrada |
-| `/api/memory/search` | GET | Busca BM25 no vault |
-| `/api/memory/checkpoint` | GET | Recupera checkpoint de sessão |
-| `/api/memory/checkpoint` | POST | Salva checkpoint de sessão |
-| `/api/memory/compact` | GET | Retorna resultado da última compactação |
-| `/api/memory/compact` | POST | Executa compactação completa (localhost only) |
-| `/api/memory/migrate` | POST | Migra arquivos flat `.md` para estrutura vault (localhost only) |
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/memory` | GET | Load conversations (all or by agentId) |
+| `/api/memory` | POST | Save conversations, append memory, init project |
+| `/api/memory/vault` | GET | List agents, count categories, read entries |
+| `/api/memory/vault` | POST | Create new entry |
+| `/api/memory/vault` | PUT | Update existing entry |
+| `/api/memory/vault` | DELETE | Remove entry |
+| `/api/memory/search` | GET | BM25 search in vault |
+| `/api/memory/checkpoint` | GET | Recover session checkpoint |
+| `/api/memory/checkpoint` | POST | Save session checkpoint |
+| `/api/memory/compact` | GET | Return last compaction result |
+| `/api/memory/compact` | POST | Run full compaction (localhost only) |
+| `/api/memory/migrate` | POST | Migrate flat `.md` files to vault structure (localhost only) |
 
-### `GET /api/memory/search` — Parâmetros
+### `GET /api/memory/search` — Parameters
 
-| Param | Tipo | Obrigatório | Default |
-|-------|------|-------------|---------|
-| `q` | string | sim | — |
-| `agentId` | string | não | todos |
-| `category` | VaultCategory | não | todas |
-| `limit` | number | não | 10 (max 100) |
+| Param | Type | Required | Default |
+|-------|------|----------|---------|
+| `q` | string | yes | — |
+| `agentId` | string | no | all |
+| `category` | VaultCategory | no | all |
+| `limit` | number | no | 10 (max 100) |
 
 ### `POST /api/memory/checkpoint` — Body
 
@@ -549,14 +549,14 @@ Converte arquivos de memória no formato antigo (flat `.md` por agente) para a e
 {
   "agentId": "bmad-master",
   "category": "decisions",
-  "content": "Decidimos usar SSE em vez de WebSockets.",
+  "content": "We decided to use SSE instead of WebSockets.",
   "tags": ["sse", "architecture"]
 }
 ```
 
 ---
 
-## 10. Tipos TypeScript (`lib/memory/types.ts`)
+## 10. TypeScript Types (`lib/memory/types.ts`)
 
 ```typescript
 type VaultCategory = "decisions" | "lessons" | "tasks" | "projects" | "handoffs";
@@ -568,14 +568,14 @@ const VAULT_CATEGORIES: VaultCategory[] = [
 interface ConversationMessage {
   role: "user" | "agent";
   text: string;
-  internal?: boolean;   // mensagens internas não são salvas em checkpoints/handoffs
+  internal?: boolean;   // internal messages are not saved in checkpoints/handoffs
 }
 
 interface VaultEntry {
   id: string;           // Date.now().toString()
   date: string;         // ISO datetime "2026-03-16T14:32"
-  content: string;      // markdown livre
-  tags: string[];       // extraídas via /#(\w+)/g
+  content: string;      // free-form markdown
+  tags: string[];       // extracted via /#(\w+)/g
   agentId: string;
   category: VaultCategory;
 }
@@ -617,7 +617,7 @@ interface CompactionResult {
 
 ---
 
-## 11. Grafo de Dependências entre Módulos
+## 11. Module Dependency Graph
 
 ```mermaid
 graph TD
@@ -646,94 +646,94 @@ graph TD
     style COMPACT fill:#fbf,stroke:#333
 ```
 
-**Dependências circulares evitadas** via `dynamic import()`:
-- `vault.ts` → `search.ts`: atualização de índice após append/delete (try/catch, silencia erros)
-- `compact.ts` → `search.ts`: reconstrução de índice após compactação
+**Circular dependencies avoided** via `dynamic import()`:
+- `vault.ts` → `search.ts`: index update after append/delete (try/catch, errors silenced)
+- `compact.ts` → `search.ts`: index rebuild after compaction
 
 ---
 
-## 12. Layout do Sistema de Arquivos
+## 12. File System Layout
 
 ```
 .memory/
-├── _project.md                         # Contexto global — injetado em todos os agentes
-├── bmad-master/                        # Vault do agente bmad-master
-│   ├── decisions.md                    #   Decisões técnicas
-│   ├── lessons.md                      #   Lições aprendidas
-│   ├── handoffs.md                     #   Resumos de sessão
-│   ├── tasks.md                        #   Tarefas abertas
-│   └── projects.md                     #   Contexto do projeto
-├── dev/                                # Vault do agente dev
+├── _project.md                         # Global context — injected into all agents
+├── bmad-master/                        # bmad-master agent vault
+│   ├── decisions.md                    #   Technical decisions
+│   ├── lessons.md                      #   Lessons learned
+│   ├── handoffs.md                     #   Session summaries
+│   ├── tasks.md                        #   Open tasks
+│   └── projects.md                     #   Project context
+├── dev/                                # dev agent vault
 │   └── ...
-├── conversations/                      # Histórico raw (gitignored)
+├── conversations/                      # Raw history (gitignored)
 │   ├── bmad-master.json
 │   └── dev.json
-└── .vault/                             # Dados internos do sistema
-    ├── index.json                      # Índice BM25 (MiniSearch)
-    ├── compact-log.json                # Log da última compactação
-    └── checkpoints/                    # Checkpoints de sessão
+└── .vault/                             # System internal data
+    ├── index.json                      # BM25 index (MiniSearch)
+    ├── compact-log.json                # Last compaction log
+    └── checkpoints/                    # Session checkpoints
         ├── bmad-master.json
         └── dev.json
 ```
 
 ---
 
-## 13. Gitignore e Versionamento
+## 13. Gitignore and Versioning
 
-| Caminho | Versionar | Razão |
-|---------|-----------|-------|
-| `.memory/_project.md` | Sim | Contexto curado do projeto |
-| `.memory/{agentId}/` | Sim | Vault estruturado com memórias valiosas |
-| `.memory/.vault/index.json` | Não | Reconstruído automaticamente |
-| `.memory/.vault/compact-log.json` | Não | Log operacional, regenerado a cada compactação |
-| `.memory/.vault/checkpoints/` | Não | Dados voláteis de sessão |
-| `.memory/conversations/` | Não | Volume alto, dados transientes |
-| `docs/chat-sessions.json` | Não | IDs de sessão voláteis |
-
----
-
-## 14. Padrões de Tratamento de Erros
-
-O sistema adota uma filosofia de **resiliência silenciosa**: falhas em subsistemas não bloqueiam o fluxo principal.
-
-| Módulo | Cenário de falha | Comportamento |
-|--------|-------------------|--------------|
-| `vault.ts` | Dynamic import de search falha | Silenciado — índice atualizado na próxima compactação |
-| `vault.ts` | Arquivo de categoria inexistente | Retorna array vazio |
-| `session.ts` | Checkpoint corrompido (JSON inválido) | Retorna `null` — sessão fresca |
-| `session.ts` | Checkpoint expirado (> 7 dias) | Retorna `null` |
-| `search.ts` | `index.json` ausente | Reconstrói índice do zero na próxima busca |
-| `compact.ts` | Conversa corrompida | Pula o arquivo, continua com as demais |
-| `compact.ts` | Rebuild do índice falha | `indexRebuilt: false` no resultado |
-| `compact.ts` | Falha ao deletar arquivo legado | Silenciado via try/catch |
-| `inject.ts` | Busca BM25 falha | Contexto injetado sem decisões/lições |
+| Path | Version | Reason |
+|------|---------|--------|
+| `.memory/_project.md` | Yes | Curated project context |
+| `.memory/{agentId}/` | Yes | Structured vault with valuable memories |
+| `.memory/.vault/index.json` | No | Automatically rebuilt |
+| `.memory/.vault/compact-log.json` | No | Operational log, regenerated on each compaction |
+| `.memory/.vault/checkpoints/` | No | Volatile session data |
+| `.memory/conversations/` | No | High volume, transient data |
+| `docs/chat-sessions.json` | No | Volatile session IDs |
 
 ---
 
-## 15. Constantes do Sistema
+## 14. Error Handling Patterns
 
-| Constante | Valor | Módulo | Propósito |
-|-----------|-------|--------|-----------|
-| `TOKEN_BUDGET` | 2000 | inject.ts | Limite de tokens no contexto injetado |
-| `SEVEN_DAYS_MS` | 604.800.000 | session.ts, compact.ts | Validade de checkpoints |
-| `MAX_CONVERSATION_MESSAGES` | 20 | compact.ts | Trigger para recorte de conversas |
-| `MAX_VAULT_ENTRIES_PER_CATEGORY` | 30 | compact.ts | Trigger para consolidação |
-| `KEEP_VAULT_ENTRIES` | 20 | compact.ts | Entradas retidas após consolidação |
-| `COMPACT_INTERVAL` | 600.000 (10 min) | MainContent.tsx | Frequência de compactação automática |
-| Checkpoint size | 50 msgs | session.ts | Mensagens retidas no checkpoint |
-| Handoff preview | 6 msgs | MainContent.tsx | Mensagens usadas para gerar handoff |
-| Search fuzzy | 0.2 | search.ts | Tolerância de fuzzy matching |
-| Search limit default | 10 | search.ts | Resultados por busca |
+The system adopts a **silent resilience** philosophy: subsystem failures do not block the main flow.
+
+| Module | Failure scenario | Behavior |
+|--------|-----------------|----------|
+| `vault.ts` | Dynamic import of search fails | Silenced — index updated at next compaction |
+| `vault.ts` | Category file doesn't exist | Returns empty array |
+| `session.ts` | Corrupted checkpoint (invalid JSON) | Returns `null` — fresh session |
+| `session.ts` | Expired checkpoint (> 7 days) | Returns `null` |
+| `search.ts` | `index.json` missing | Rebuilds index from scratch on next search |
+| `compact.ts` | Corrupted conversation | Skips the file, continues with others |
+| `compact.ts` | Index rebuild fails | `indexRebuilt: false` in result |
+| `compact.ts` | Failed to delete legacy file | Silenced via try/catch |
+| `inject.ts` | BM25 search fails | Context injected without decisions/lessons |
 
 ---
 
-## 16. Script Utilitário
+## 15. System Constants
+
+| Constant | Value | Module | Purpose |
+|----------|-------|--------|---------|
+| `TOKEN_BUDGET` | 2000 | inject.ts | Token limit for injected context |
+| `SEVEN_DAYS_MS` | 604,800,000 | session.ts, compact.ts | Checkpoint validity |
+| `MAX_CONVERSATION_MESSAGES` | 20 | compact.ts | Conversation trimming trigger |
+| `MAX_VAULT_ENTRIES_PER_CATEGORY` | 30 | compact.ts | Consolidation trigger |
+| `KEEP_VAULT_ENTRIES` | 20 | compact.ts | Entries retained after consolidation |
+| `COMPACT_INTERVAL` | 600,000 (10 min) | MainContent.tsx | Automatic compaction frequency |
+| Checkpoint size | 50 msgs | session.ts | Messages retained in checkpoint |
+| Handoff preview | 6 msgs | MainContent.tsx | Messages used to generate handoff |
+| Search fuzzy | 0.2 | search.ts | Fuzzy matching tolerance |
+| Search limit default | 10 | search.ts | Results per search |
+
+---
+
+## 16. Utility Script
 
 ### `scripts/import-conversations.mjs`
 
-Importa o histórico de conversas existente (`.memory/conversations/`) para o vault usando keyword matching.
+Imports existing conversation history (`.memory/conversations/`) into the vault using keyword matching.
 
-**O que importa:** handoffs, decisions (keywords PT+EN), lessons (keywords PT+EN), projects (`_project.md`)
+**What it imports:** handoffs, decisions (PT+EN keywords), lessons (PT+EN keywords), projects (`_project.md`)
 
 ```bash
 node scripts/import-conversations.mjs
@@ -741,13 +741,13 @@ node scripts/import-conversations.mjs
 
 ---
 
-## 17. Evolução Planejada
+## 17. Planned Evolution
 
-| Fase | Feature | Prioridade | Status |
-|------|---------|-----------|--------|
-| v3.1 | Extração heurística de insights ao fechar sessão e na compactação | Alta | **Implementado** |
-| v3.2 | Extração via LLM (complementando heurística) | Média | Pendente |
-| v3.3 | Busca semântica com embeddings (além de BM25) | Média | Pendente |
-| v3.4 | Knowledge graph — wiki-links entre memórias de agentes | Baixa | Pendente |
-| v3.5 | Context profiles — ajustar injeção por tipo de tarefa | Baixa | Pendente |
-| v4.0 | Sincronização com Obsidian vault | Baixa | Pendente |
+| Phase | Feature | Priority | Status |
+|-------|---------|----------|--------|
+| v3.1 | Heuristic insight extraction on session close and compaction | High | **Implemented** |
+| v3.2 | LLM-based extraction (complementing heuristics) | Medium | Pending |
+| v3.3 | Semantic search with embeddings (beyond BM25) | Medium | Pending |
+| v3.4 | Knowledge graph — wiki-links between agent memories | Low | Pending |
+| v3.5 | Context profiles — adjust injection by task type | Low | Pending |
+| v4.0 | Obsidian vault synchronization | Low | Pending |

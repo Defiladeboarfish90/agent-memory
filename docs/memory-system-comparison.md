@@ -1,259 +1,259 @@
-# Comparacao de Sistemas de Memoria: AITeam vs. ChatGPT vs. Claude vs. OpenClaw
+# Memory System Comparison: AITeam vs. ChatGPT vs. Claude vs. OpenClaw
 
-**Pesquisa e analise:** 2026-03-17
-
----
-
-## Sistemas analisados
-
-| Sistema | Provedor | Tipo | Acesso |
-|---------|----------|------|--------|
-| **ChatGPT Memory** | OpenAI | Produto consumer | Cloud, proprietario |
-| **Claude Consumer Memory** | Anthropic | Produto consumer | Cloud, proprietario |
-| **Claude Memory Tool (API)** | Anthropic | Ferramenta para desenvolvedores | Self-hosted pelo dev |
-| **OpenClaw Native Memory** | OpenClaw (open-source) | Framework de agentes | Local, open-source |
-| **ClawVault** | Versatly (open-source) | Plugin para OpenClaw | Local, open-source |
-| **AITeam Memory v2.1** | INOSX (este projeto) | Dashboard de agentes BMAD | Local, proprietario |
+**Research and analysis:** 2026-03-17
 
 ---
 
-## 1. O que e armazenado
+## Systems analyzed
+
+| System | Provider | Type | Access |
+|--------|----------|------|--------|
+| **ChatGPT Memory** | OpenAI | Consumer product | Cloud, proprietary |
+| **Claude Consumer Memory** | Anthropic | Consumer product | Cloud, proprietary |
+| **Claude Memory Tool (API)** | Anthropic | Developer tool | Self-hosted by dev |
+| **OpenClaw Native Memory** | OpenClaw (open-source) | Agent framework | Local, open-source |
+| **ClawVault** | Versatly (open-source) | OpenClaw plugin | Local, open-source |
+| **AITeam Memory v2.1** | INOSX (this project) | BMAD agent dashboard | Local, proprietary |
+
+---
+
+## 1. What is stored
 
 ### ChatGPT
 
-O ChatGPT armazena **6 categorias opacas**, pré-montadas e injetadas em toda conversa:
+ChatGPT stores **6 opaque categories**, pre-assembled and injected into every conversation:
 
-1. **Bio Tool (memorias salvas)** — fatos explicitamente pedidos pelo usuario
-2. **Preferencias de resposta** — ~15 entradas inferidas automaticamente sobre estilo de comunicacao
-3. **Topicos de conversas passadas** — ~8 resumos dos primeiros usos do usuario
-4. **Insights sobre o usuario** — ~14 dados biograficos e profissionais extraidos automaticamente
-5. **Historico recente** — ~40 conversas recentes com timestamp e **apenas as mensagens do usuario** (sem as respostas do modelo)
-6. **Metadados de interacao** — dispositivo, horario local, frequencia de uso, scores de qualidade, tags de intencao
+1. **Bio Tool (saved memories)** — facts explicitly requested by the user
+2. **Response preferences** — ~15 entries automatically inferred about communication style
+3. **Past conversation topics** — ~8 summaries from the user's first interactions
+4. **User insights** — ~14 biographical and professional data points automatically extracted
+5. **Recent history** — ~40 recent conversations with timestamp and **only the user's messages** (without model responses)
+6. **Interaction metadata** — device, local time, usage frequency, quality scores, intent tags
 
-> O usuario so consegue ver e editar a categoria 1 (Bio Tool). As demais sao gerenciadas de forma opaca pela OpenAI.
+> The user can only see and edit category 1 (Bio Tool). The rest are managed opaquely by OpenAI.
 
 ### Claude Consumer Memory
 
-O Claude armazena memorias organizadas em **4 categorias estruturadas**:
+Claude stores memories organized into **4 structured categories**:
 
-- **Role & Work** — cargo, industria, contexto profissional
-- **Current Projects** — iniciativas ativas discutidas
-- **Preferences** — estilo de comunicacao, formato preferido
-- **Personal Content** — fatos pessoais compartilhados
+- **Role & Work** — role, industry, professional context
+- **Current Projects** — active initiatives discussed
+- **Preferences** — communication style, preferred format
+- **Personal Content** — personal facts shared
 
-Memorias sao **escopadas por Projeto** — nao ha memoria global entre projetos diferentes.
+Memories are **scoped by Project** — there is no global memory across different projects.
 
 ### Claude Memory Tool (API)
 
-Armazenamento totalmente livre — o desenvolvedor define o schema. A documentacao oficial sugere evitar historico verbatim e favorece:
+Completely free-form storage — the developer defines the schema. The official documentation suggests avoiding verbatim history and favors:
 
-- Fatos e preferencias do usuario/cliente
-- Decisoes historicas tomadas
-- Estado e progresso do projeto
-- Contexto de workflows recorrentes
+- User/client facts and preferences
+- Historical decisions made
+- Project state and progress
+- Recurring workflow context
 
-Formato: arquivos Markdown, XML ou texto puro em um diretorio `/memories`. O modelo escreve e le esses arquivos autonomamente via tool calls.
+Format: Markdown, XML, or plain text files in a `/memories` directory. The model writes and reads these files autonomously via tool calls.
 
 ### OpenClaw Native
 
-Tres camadas de armazenamento em Markdown local:
+Three layers of storage in local Markdown:
 
-1. **Notas diarias** (`memory/YYYY-MM-DD.md`) — log append-only de atividades e decisoes do dia
-2. **Memoria de longo prazo** (`MEMORY.md`) — arquivo curado com conhecimento distilado: preferencias, fatos importantes, projetos em andamento, licoes aprendidas
-3. **Transcripts de sessao** (`sessions/YYYY-MM-DD-<slug>.md`) — conversas completas com slug descritivo gerado por LLM
+1. **Daily notes** (`memory/YYYY-MM-DD.md`) — append-only log of the day's activities and decisions
+2. **Long-term memory** (`MEMORY.md`) — curated file with distilled knowledge: preferences, important facts, ongoing projects, lessons learned
+3. **Session transcripts** (`sessions/YYYY-MM-DD-<slug>.md`) — complete conversations with descriptive slug generated by LLM
 
 ### ClawVault
 
-Memorias tipadas e roteadas para **8 categorias estruturadas** em Markdown com YAML frontmatter:
+Typed memories routed to **8 structured categories** in Markdown with YAML frontmatter:
 
-| Categoria | O que armazena |
-|-----------|---------------|
-| `decisions/` | Escolhas estrategicas com racional |
-| `lessons/` | Aprendizados de resultados |
-| `people/` | Dados de contatos e relacionamentos |
-| `tasks/` | Metas e itens de execucao |
-| `projects/` | Rastreamento de iniciativas |
-| `inbox/` | Capturas pendentes de triagem |
-| `preferences/` | Preferencias do usuario |
-| `progress/` | Marcos alcancados |
+| Category | What it stores |
+|----------|---------------|
+| `decisions/` | Strategic choices with rationale |
+| `lessons/` | Learnings from outcomes |
+| `people/` | Contact data and relationships |
+| `tasks/` | Goals and action items |
+| `projects/` | Initiative tracking |
+| `inbox/` | Captures pending triage |
+| `preferences/` | User preferences |
+| `progress/` | Milestones achieved |
 
 ### AITeam Memory v2.1
 
-Memorias estruturadas em **5 categorias** por agente, mais contexto global:
+Structured memories in **5 categories** per agent, plus global context:
 
-| Categoria | O que armazena |
-|-----------|---------------|
-| `decisions` | Escolhas tecnicas ou de projeto com contexto |
-| `lessons` | Bugs resolvidos, insights, aprendizados |
-| `handoffs` | Resumo da ultima sessao + proximo passo |
-| `tasks` | Itens abertos em formato checklist `[ ]` |
-| `projects` | Contexto geral do agente |
-| `_project.md` | Contexto global compartilhado entre todos os agentes |
-
----
-
-## 2. Como as memorias sao criadas
-
-| Sistema | Automatico | Manual | Metodo de extracao |
-|---------|-----------|--------|--------------------|
-| **ChatGPT** | Sim (assincrono, fora da conversa) | Sim ("lembre-se de X") | Inferencia proprietaria pela OpenAI; detalhes nao publicados |
-| **Claude Consumer** | Sim (sintese via LLM ao ativar toggle) | Sim ("lembre-se de X") | Claude sintetiza categorias a partir do historico |
-| **Claude API Tool** | Sim (o proprio Claude decide o que escrever) | Sim (instrucoes no system prompt) | Claude escreve arquivos autonomamente via tool calls |
-| **OpenClaw Native** | Sim (agent escreve durante a sessao + flush pre-compactacao) | Sim (instrucao explicita) | Agent-driven: Claude escreve notas diarias continuamente |
-| **ClawVault** | Sim (`observe --compress session.jsonl`) | Sim (CLI: `remember decision "X"`) | LLM (Gemini Flash) ou rule-based extrai observacoes com score |
-| **AITeam v2.1** | Sim (ao fechar janela de chat, via POST /sleep) | Sim (Memory Vault UI: + Nova entrada) | Cursor Agent CLI analisa transcript e retorna JSON estruturado |
-
-**Diferenca chave:** ChatGPT e Claude Consumer extraem memorias de forma **assincrona e invisivel** — o usuario nao sabe exatamente quando e o que e extraido. O AITeam, ClawVault e Claude API Tool tornam a extracao **observavel e controlavel**, com janela de veto (AITeam) ou CLI explicito (ClawVault).
+| Category | What it stores |
+|----------|---------------|
+| `decisions` | Technical or project choices with context |
+| `lessons` | Bugs resolved, insights, learnings |
+| `handoffs` | Last session summary + next step |
+| `tasks` | Open items in checklist format `[ ]` |
+| `projects` | Agent's general context |
+| `_project.md` | Global context shared across all agents |
 
 ---
 
-## 3. Como as memorias sao recuperadas (retrieval)
+## 2. How memories are created
 
-Esta e a maior diferenca arquitetural entre os sistemas:
+| System | Automatic | Manual | Extraction method |
+|--------|-----------|--------|-------------------|
+| **ChatGPT** | Yes (async, outside the conversation) | Yes ("remember X") | Proprietary inference by OpenAI; details unpublished |
+| **Claude Consumer** | Yes (LLM synthesis when toggle is activated) | Yes ("remember X") | Claude synthesizes categories from history |
+| **Claude API Tool** | Yes (Claude itself decides what to write) | Yes (instructions in system prompt) | Claude writes files autonomously via tool calls |
+| **OpenClaw Native** | Yes (agent writes during session + pre-compaction flush) | Yes (explicit instruction) | Agent-driven: Claude writes daily notes continuously |
+| **ClawVault** | Yes (`observe --compress session.jsonl`) | Yes (CLI: `remember decision "X"`) | LLM (Gemini Flash) or rule-based extracts observations with score |
+| **AITeam v2.1** | Yes (on chat window close, via POST /sleep) | Yes (Memory Vault UI: + New entry) | Cursor Agent CLI analyzes transcript and returns structured JSON |
 
-| Sistema | Estrategia de retrieval | Busca semantica? | Busca por palavra-chave? |
-|---------|------------------------|-----------------|--------------------------|
-| **ChatGPT** | **Injecao total** — todas as 6 categorias pre-montadas em toda conversa. Sem busca em tempo real. | Nao | Nao (tudo e injetado) |
-| **Claude Consumer** | **Leitura de arquivo** + toggle "referenciar historico de conversas". Nao e RAG vetorial. | Nao (consumer) | Nao |
-| **Claude API Tool** | **Agente seleciona arquivos** — Claude lista `/memories`, raciocina sobre nomes e le os relevantes. Sem embeddings. | Nao | Nao (reasoning-based) |
-| **OpenClaw Native** | **Hibrido BM25 + Vector** — SQLite com `sqlite-vec` e FTS5. Embeddings locais (gemma-300M) ou via API. Fusao com pesos configuraveis (70% vector + 30% BM25). | Sim | Sim |
-| **ClawVault** | **Hibrido BM25 + Vector + Knowledge Graph** — RRF (Reciprocal Rank Fusion) reranking + traversal de grafo de wiki-links para recuperacao multi-hop. | Sim (opcional) | Sim |
-| **AITeam v2.1** | **BM25 via MiniSearch** — busca por relevancia textual dentro do vault do agente selecionado. Sem embeddings. | Nao (apenas BM25) | Sim |
-
-**Observacao sobre o AITeam:** O sistema atual usa BM25 puro (sem embeddings vetoriais). Isso e mais rapido e sem dependencias externas, mas perde correspondencias semanticas que embeddings capturam. OpenClaw e ClawVault tem retrieval mais sofisticado com suporte a busca semantica opcional.
+**Key difference:** ChatGPT and Claude Consumer extract memories **asynchronously and invisibly** — the user doesn't know exactly when and what is extracted. AITeam, ClawVault, and Claude API Tool make extraction **observable and controllable**, with a veto window (AITeam) or explicit CLI (ClawVault).
 
 ---
 
-## 4. Injecao de contexto
+## 3. How memories are retrieved (retrieval)
 
-Como e quando as memorias sao entregues ao modelo:
+This is the biggest architectural difference between the systems:
 
-| Sistema | Mecanismo | Budget / Limite |
-|---------|-----------|-----------------|
-| **ChatGPT** | Bloco `Model Set Context` pre-montado no system prompt. Injetado inteiro em toda conversa. | Nao publicado. ~40 conversas recentes. |
-| **Claude Consumer** | Contexto do Projeto + historico de conversas injetados no inicio. | Nao publicado. |
-| **Claude API Tool** | `view` tool calls leem arquivos sob demanda. Conteudo entra no context window como resultado de tool. | Proporcional ao numero de arquivos lidos. |
-| **OpenClaw Native** | Notas diarias carregadas automaticamente + `memory_search` / `memory_get` MCP tools. | Configurable. |
-| **ClawVault** | `clawvault inject "query"` — CLI retorna trechos relevantes para injetar antes da chamada ao modelo. | Configurable por profile (`default`, `planning`, `incident`, `handoff`). |
-| **AITeam v2.1** | `injectContext()` em `lib/memory/inject.ts` chamado automaticamente em `/api/agents/command` antes de spawnar o CLI. | **2.000 tokens** com prioridade: handoff → tasks → decisions/lessons → projects. |
+| System | Retrieval strategy | Semantic search? | Keyword search? |
+|--------|--------------------|-----------------|-----------------|
+| **ChatGPT** | **Full injection** — all 6 categories pre-assembled in every conversation. No real-time search. | No | No (everything is injected) |
+| **Claude Consumer** | **File reading** + toggle "reference conversation history". Not vector RAG. | No (consumer) | No |
+| **Claude API Tool** | **Agent selects files** — Claude lists `/memories`, reasons about names, and reads the relevant ones. No embeddings. | No | No (reasoning-based) |
+| **OpenClaw Native** | **Hybrid BM25 + Vector** — SQLite with `sqlite-vec` and FTS5. Local embeddings (gemma-300M) or via API. Fusion with configurable weights (70% vector + 30% BM25). | Yes | Yes |
+| **ClawVault** | **Hybrid BM25 + Vector + Knowledge Graph** — RRF (Reciprocal Rank Fusion) reranking + wiki-link graph traversal for multi-hop retrieval. | Yes (optional) | Yes |
+| **AITeam v2.1** | **BM25 via MiniSearch** — text relevance search within the selected agent's vault. No embeddings. | No (BM25 only) | Yes |
 
-**Diferencas de design:**
-
-- **ChatGPT** injeta *tudo* sempre — simples, mas desperdicador. Nao ha relevancia, nao ha budget.
-- **Claude API Tool** e o oposto — o proprio modelo decide o que ler, com custo de tool calls extras por sessao.
-- **AITeam** tem um budget explicito com ordem de prioridade deterministica. E mais previsivel que o ChatGPT e mais barato que o Claude API Tool.
-- **ClawVault** tem profiles de contexto (planning, incident, handoff) que mudam o conjunto de memorias injetadas — conceito ausente nos outros sistemas.
+**Note on AITeam:** The current system uses pure BM25 (no vector embeddings). This is faster and has no external dependencies, but misses semantic matches that embeddings capture. OpenClaw and ClawVault have more sophisticated retrieval with optional semantic search support.
 
 ---
 
-## 5. Controle do usuario
+## 4. Context injection
 
-| Sistema | Usuario pode ver? | Usuario pode editar? | Usuario pode deletar? | Transparencia |
-|---------|-----------------|---------------------|----------------------|---------------|
-| **ChatGPT** | Apenas Bio Tool | Apenas Bio Tool | Apenas Bio Tool | **Baixa** — categorias auto-inferidas sao completamente opacas |
-| **Claude Consumer** | Sim (categorias curadas) | Parcialmente | Sim (por Projeto) | **Media** — categorias visiveis, mas sintese e automatica |
-| **Claude API Tool** | Sim (arquivos no filesystem) | Sim (qualquer editor) | Sim | **Alta** — desenvolvedor controla tudo |
-| **OpenClaw Native** | Sim (Markdown local) | Sim | Sim | **Alta** — arquivos plainos no disco |
-| **ClawVault** | Sim (Markdown + YAML) | Sim | Sim | **Alta** — zero telemetria |
-| **AITeam v2.1** | Sim (Memory Vault UI) | Sim (inline) | Sim | **Alta** — badge 🤖 llm identifica entradas automaticas, veto de 10min |
+How and when memories are delivered to the model:
 
-**Diferencial do AITeam:** A **janela de veto de 10 minutos** e unica entre os sistemas analisados. Nenhum outro oferece um periodo de graca onde o usuario pode revisar e descartar memorias extraidas automaticamente antes que entrem em producao. O ChatGPT nao tem isso — uma memoria errada fica la silenciosamente.
+| System | Mechanism | Budget / Limit |
+|--------|-----------|---------------|
+| **ChatGPT** | Pre-assembled `Model Set Context` block in the system prompt. Injected whole in every conversation. | Unpublished. ~40 recent conversations. |
+| **Claude Consumer** | Project Context + conversation history injected at start. | Unpublished. |
+| **Claude API Tool** | `view` tool calls read files on demand. Content enters the context window as tool result. | Proportional to the number of files read. |
+| **OpenClaw Native** | Daily notes loaded automatically + `memory_search` / `memory_get` MCP tools. | Configurable. |
+| **ClawVault** | `clawvault inject "query"` — CLI returns relevant excerpts to inject before the model call. | Configurable by profile (`default`, `planning`, `incident`, `handoff`). |
+| **AITeam v2.1** | `injectContext()` in `lib/memory/inject.ts` called automatically in `/api/agents/command` before spawning the CLI. | **2,000 tokens** with priority: handoff → tasks → decisions/lessons → projects. |
 
----
+**Design differences:**
 
-## 6. Armazenamento e arquitetura tecnica
-
-| Sistema | Onde fica | Formato | Busca semantica | Grafo de conhecimento |
-|---------|-----------|---------|----------------|----------------------|
-| **ChatGPT** | Cloud OpenAI | Proprietario (SQL/KV interno) | Desconhecido | Nao |
-| **Claude Consumer** | Cloud Anthropic | Categorias estruturadas | Nao (consumer) | Nao |
-| **Claude API Tool** | Cliente (desenvolvedor) | Arquivos (MD, XML, texto) | Nao | Nao |
-| **OpenClaw Native** | Local (filesystem + SQLite) | Markdown + SQLite-vec | Sim (embeddings locais ou API) | Nao |
-| **ClawVault** | Local (filesystem + JSON) | Markdown + YAML frontmatter | Sim (opcional) | **Sim** (wiki-links + RRF) |
-| **AITeam v2.1** | Local (filesystem + JSON) | Markdown + JSON por categoria | Nao (BM25 puro) | Nao |
+- **ChatGPT** injects *everything* always — simple, but wasteful. No relevance, no budget.
+- **Claude API Tool** is the opposite — the model itself decides what to read, at the cost of extra tool calls per session.
+- **AITeam** has an explicit budget with deterministic priority order. More predictable than ChatGPT and cheaper than Claude API Tool.
+- **ClawVault** has context profiles (planning, incident, handoff) that change the set of injected memories based on the task — a concept absent in other systems.
 
 ---
 
-## 7. Capacidades offline
+## 5. User control
 
-| Sistema | Funciona offline? | Nota |
-|---------|-----------------|------|
-| **ChatGPT** | Nao | Requer cloud OpenAI |
-| **Claude Consumer** | Nao | Requer cloud Anthropic |
-| **Claude API Tool** | Sim (storage local) | Mas inferencia do Claude requer API |
-| **OpenClaw Native** | Sim | Modelo local gemma-300M para embeddings |
-| **ClawVault** | Sim (modo BM25) | Embeddings opcionais via API |
-| **AITeam v2.1** | Parcial | Storage local, mas extracao LLM requer Cursor Agent CLI |
+| System | User can see? | User can edit? | User can delete? | Transparency |
+|--------|--------------|---------------|-----------------|-------------|
+| **ChatGPT** | Bio Tool only | Bio Tool only | Bio Tool only | **Low** — auto-inferred categories are completely opaque |
+| **Claude Consumer** | Yes (curated categories) | Partially | Yes (per Project) | **Medium** — categories visible, but synthesis is automatic |
+| **Claude API Tool** | Yes (files on filesystem) | Yes (any editor) | Yes | **High** — developer controls everything |
+| **OpenClaw Native** | Yes (local Markdown) | Yes | Yes | **High** — plain files on disk |
+| **ClawVault** | Yes (Markdown + YAML) | Yes | Yes | **High** — zero telemetry |
+| **AITeam v2.1** | Yes (Memory Vault UI) | Yes (inline) | Yes | **High** — 🤖 llm badge identifies automatic entries, 10-min veto |
 
----
-
-## 8. Tabela comparativa geral
-
-| Dimensao | ChatGPT | Claude Consumer | Claude API Tool | OpenClaw Native | ClawVault | **AITeam v2.1** |
-|----------|---------|----------------|-----------------|----------------|-----------|----------------|
-| **Categorias de memoria** | 6 (opacas) | 4 | Livre | 3 camadas | 8 | **5 + global** |
-| **Extracao automatica** | Sim | Sim | Sim (agent-driven) | Sim | Sim | **Sim** |
-| **Retrieval semantico** | Nao | Nao | Nao | Sim | Sim | **Nao (BM25)** |
-| **Budget de contexto** | Nao publicado | Nao publicado | Proporcional a leituras | Configuravel | Por profile | **2.000 tokens** |
-| **Veto de memorias LLM** | Nao | Nao | N/A | Nao | Nao | **Sim (10 min)** |
-| **Multi-agente** | Nao | Nao | Nao (single-tenant) | Nao | Nao | **Sim (vault por agente)** |
-| **Memoria global compartilhada** | Nao | Nao | Nao | `MEMORY.md` (unico) | Nao | **Sim (`_project.md`)** |
-| **Controle do usuario** | Baixo | Medio | Alto | Alto | Alto | **Alto** |
-| **Transparencia** | Baixa | Media | Alta | Alta | Alta | **Alta** |
-| **Offline** | Nao | Nao | Parcial | Sim | Sim | **Parcial** |
-| **Cloud dependency** | Total | Total | Storage local | Nenhuma | Opcional | **CLI local** |
-| **Grafo de conhecimento** | Nao | Nao | Nao | Nao | Sim | **Nao** |
-| **UI visual** | Sim (settings) | Sim (settings) | Nao (codigo) | Nao (CLI) | Nao (CLI) | **Sim (Memory Vault)** |
-| **Custo de operacao** | Incluso no plano | Incluso no plano | Paga por token | Zero (local) | Zero (local) | **Zero** |
+**AITeam differentiator:** The **10-minute veto window** is unique among the analyzed systems. No other system offers a grace period where the user can review and discard automatically extracted memories before they go into production. ChatGPT doesn't have this — an incorrect memory stays there silently.
 
 ---
 
-## 9. Analise de posicionamento
+## 6. Storage and technical architecture
 
-### O que o AITeam faz diferente de todos os outros
-
-**1. Multi-agente com vault isolado por agente**
-Nenhum outro sistema analisado tem suporte nativo a multiplos agentes com memorias isoladas por agente. ChatGPT e Claude tem uma memoria por usuario. OpenClaw e ClawVault tem uma memoria por instancia do framework. O AITeam permite que BMad Master, Winston, Amelia e os demais 11 agentes tenham vaults completamente separados, com injecao de contexto especifica para cada um — mais a memoria global `_project.md` compartilhada.
-
-**2. Janela de veto de memorias LLM**
-O AITeam e o unico sistema com um mecanismo explicitp de revisao pre-persistencia. O badge 🤖 llm + veto de 10 minutos resolve o problema que todos os outros sistemas ignoram: o que acontece quando o LLM extrai uma memoria errada? No ChatGPT a memoria errada fica. No Claude ela fica. No AITeam, voce tem 10 minutos para descarta-la antes que seja injetada na proxima sessao.
-
-**3. UI visual de gerenciamento**
-ChatGPT e Claude tem paginas de configuracoes. OpenClaw e ClawVault tem CLI. O AITeam tem o **Memory Vault** — uma interface visual completa acessivel dentro do proprio dashboard, com categorias, busca, contagem de entradas, edicao inline e criacao manual. E o sistema mais acessivel para usuarios nao-tecnicos.
-
-**4. Prioridade deterministica de injecao**
-O budget de 2.000 tokens com ordem de prioridade explicita (handoff → tasks → decisions/lessons → projects) e documentado e previsivel. No ChatGPT e Claude consumer, o usuario nao sabe exatamente o que sera injetado quando o limite e atingido.
-
-### Onde o AITeam pode evoluir
-
-**1. Retrieval semantico (embeddings)**
-OpenClaw Native e ClawVault tem busca hibrida BM25 + embeddings vetoriais. O AITeam usa apenas BM25 (MiniSearch). Isso significa que uma busca por "problema de autenticacao" nao vai encontrar uma memoria que usa o termo "login falhou" — mesmo que sejam semanticamente identicos. Adicionar embeddings locais (ex: `@xenova/transformers` ou integrar com `sqlite-vec`) aumentaria significativamente a qualidade do retrieval.
-
-**2. Grafo de conhecimento**
-ClawVault constroi um grafo de wiki-links e entidades que permite recuperacao multi-hop ("decisoes relacionadas a autenticacao" → "decisoes que afetam o modulo de usuarios" → etc). O AITeam nao tem isso. Para projetos com muitas memorias interconectadas, um grafo de conhecimento seria valioso.
-
-**3. Perfis de contexto**
-ClawVault tem perfis `planning`, `incident`, `handoff` que mudam o conjunto de memorias injetadas conforme o contexto da tarefa. O AITeam poderia ter algo similar — injetar mais decisoes arquiteturais quando o usuario faz uma pergunta de arquitetura, mais tarefas quando inicia uma sessao de desenvolvimento.
-
-**4. Extracao mais granular**
-A extracao LLM do AITeam tem limite de 3 itens por categoria. Para sessoes longas ou complexas, isso pode descartar informacao relevante. ClawVault usa scores de observacao para rankear e selecionar o que persiste — um mecanismo mais sofisticado de filtragem.
+| System | Where it lives | Format | Semantic search | Knowledge graph |
+|--------|---------------|--------|----------------|-----------------|
+| **ChatGPT** | OpenAI Cloud | Proprietary (internal SQL/KV) | Unknown | No |
+| **Claude Consumer** | Anthropic Cloud | Structured categories | No (consumer) | No |
+| **Claude API Tool** | Client (developer) | Files (MD, XML, text) | No | No |
+| **OpenClaw Native** | Local (filesystem + SQLite) | Markdown + SQLite-vec | Yes (local or API embeddings) | No |
+| **ClawVault** | Local (filesystem + JSON) | Markdown + YAML frontmatter | Yes (optional) | **Yes** (wiki-links + RRF) |
+| **AITeam v2.1** | Local (filesystem + JSON) | Markdown + JSON per category | No (pure BM25) | No |
 
 ---
 
-## 10. Tabela de pontos fortes e limitacoes
+## 7. Offline capabilities
 
-| | **Pontos Fortes** | **Limitacoes** |
+| System | Works offline? | Note |
+|--------|---------------|------|
+| **ChatGPT** | No | Requires OpenAI cloud |
+| **Claude Consumer** | No | Requires Anthropic cloud |
+| **Claude API Tool** | Yes (local storage) | But Claude inference requires API |
+| **OpenClaw Native** | Yes | Local gemma-300M model for embeddings |
+| **ClawVault** | Yes (BM25 mode) | Embeddings optional via API |
+| **AITeam v2.1** | Partial | Local storage, but LLM extraction requires Cursor Agent CLI |
+
+---
+
+## 8. General comparison table
+
+| Dimension | ChatGPT | Claude Consumer | Claude API Tool | OpenClaw Native | ClawVault | **AITeam v2.1** |
+|-----------|---------|----------------|-----------------|----------------|-----------|----------------|
+| **Memory categories** | 6 (opaque) | 4 | Free-form | 3 layers | 8 | **5 + global** |
+| **Automatic extraction** | Yes | Yes | Yes (agent-driven) | Yes | Yes | **Yes** |
+| **Semantic retrieval** | No | No | No | Yes | Yes | **No (BM25)** |
+| **Context budget** | Unpublished | Unpublished | Proportional to reads | Configurable | Per profile | **2,000 tokens** |
+| **LLM memory veto** | No | No | N/A | No | No | **Yes (10 min)** |
+| **Multi-agent** | No | No | No (single-tenant) | No | No | **Yes (vault per agent)** |
+| **Shared global memory** | No | No | No | `MEMORY.md` (single) | No | **Yes (`_project.md`)** |
+| **User control** | Low | Medium | High | High | High | **High** |
+| **Transparency** | Low | Medium | High | High | High | **High** |
+| **Offline** | No | No | Partial | Yes | Yes | **Partial** |
+| **Cloud dependency** | Total | Total | Local storage | None | Optional | **Local CLI** |
+| **Knowledge graph** | No | No | No | No | Yes | **No** |
+| **Visual UI** | Yes (settings) | Yes (settings) | No (code) | No (CLI) | No (CLI) | **Yes (Memory Vault)** |
+| **Operating cost** | Included in plan | Included in plan | Pay per token | Zero (local) | Zero (local) | **Zero** |
+
+---
+
+## 9. Positioning analysis
+
+### What AITeam does differently from all others
+
+**1. Multi-agent with isolated vault per agent**
+No other analyzed system has native support for multiple agents with isolated memories per agent. ChatGPT and Claude have one memory per user. OpenClaw and ClawVault have one memory per framework instance. AITeam allows BMad Master, Winston, Amelia, and the other 11 agents to have completely separate vaults, with context injection specific to each one — plus the shared global `_project.md` memory.
+
+**2. LLM memory veto window**
+AITeam is the only system with an explicit pre-persistence review mechanism. The 🤖 llm badge + 10-minute veto solves the problem that all other systems ignore: what happens when the LLM extracts an incorrect memory? In ChatGPT, the wrong memory stays. In Claude, it stays. In AITeam, you have 10 minutes to discard it before it's injected in the next session.
+
+**3. Visual management UI**
+ChatGPT and Claude have settings pages. OpenClaw and ClawVault have CLI. AITeam has the **Memory Vault** — a complete visual interface accessible within the dashboard itself, with categories, search, entry counts, inline editing, and manual creation. It's the most accessible system for non-technical users.
+
+**4. Deterministic injection priority**
+The 2,000 token budget with explicit priority order (handoff → tasks → decisions/lessons → projects) is documented and predictable. In ChatGPT and Claude consumer, the user doesn't know exactly what will be injected when the limit is reached.
+
+### Where AITeam can evolve
+
+**1. Semantic retrieval (embeddings)**
+OpenClaw Native and ClawVault have hybrid BM25 + vector embedding search. AITeam uses only BM25 (MiniSearch). This means a search for "authentication problem" won't find a memory that uses the term "login failed" — even though they're semantically identical. Adding local embeddings (e.g., `@xenova/transformers` or integrating with `sqlite-vec`) would significantly increase retrieval quality.
+
+**2. Knowledge graph**
+ClawVault builds a wiki-link and entity graph that enables multi-hop retrieval ("decisions related to authentication" → "decisions that affect the users module" → etc.). AITeam doesn't have this. For projects with many interconnected memories, a knowledge graph would be valuable.
+
+**3. Context profiles**
+ClawVault has `planning`, `incident`, `handoff` profiles that change the set of injected memories based on the task context. AITeam could have something similar — inject more architectural decisions when the user asks an architecture question, more tasks when starting a development session.
+
+**4. More granular extraction**
+AITeam's LLM extraction has a limit of 3 items per category. For long or complex sessions, this can discard relevant information. ClawVault uses observation scores to rank and select what persists — a more sophisticated filtering mechanism.
+
+---
+
+## 10. Strengths and limitations table
+
+| | **Strengths** | **Limitations** |
 |--|---|---|
-| **ChatGPT** | Transparente para o usuario final (nao precisa configurar nada); profile detalhado de usuario | Completamente opaco; usuario nao controla auto-inferencias; so ~40 sessoes acessiveis; nao sabe o que sera esquecido |
-| **Claude Consumer** | Escopamento por Projeto e elegante; incognito mode; categorias visiveis | Sem busca semantica; memory siloada por projeto (sem visao global); feature relativamente nova |
-| **Claude API Tool** | Maximo controle para devs; self-hosted; qualquer schema; o modelo e seu proprio agente de retrieval | Sem busca semantica ou embeddings; depende do reasoning do Claude para selecionar arquivos; sem UI |
-| **OpenClaw Native** | Busca hibrida madura (BM25 + vector + SQLite); offline; open-source; auto-flush pre-compactacao | Complexidade de setup; crescimento de ~500MB/ano; sem UI; framework especifico |
-| **ClawVault** | Grafo de conhecimento; perfis de contexto; RRF reranking; CLI poderoso; zero telemetria | Sem UI; requer Node 18+; LLM para compressao requer API key; single-user |
-| **AITeam v2.1** | Multi-agente nativo; veto de 10 min; UI visual completa; budget deterministico; memoria global compartilhada | Sem embeddings vetoriais; sem grafo de conhecimento; sem perfis de contexto; extracao limitada a 3 itens/categoria |
+| **ChatGPT** | Transparent to the end user (no configuration needed); detailed user profile | Completely opaque; user doesn't control auto-inferences; only ~40 accessible sessions; doesn't know what will be forgotten |
+| **Claude Consumer** | Project scoping is elegant; incognito mode; visible categories | No semantic search; memory siloed by project (no global view); relatively new feature |
+| **Claude API Tool** | Maximum control for devs; self-hosted; any schema; the model is its own retrieval agent | No semantic search or embeddings; depends on Claude's reasoning to select files; no UI |
+| **OpenClaw Native** | Mature hybrid search (BM25 + vector + SQLite); offline; open-source; auto-flush pre-compaction | Setup complexity; ~500MB/year growth; no UI; framework-specific |
+| **ClawVault** | Knowledge graph; context profiles; RRF reranking; powerful CLI; zero telemetry | No UI; requires Node 18+; LLM compression requires API key; single-user |
+| **AITeam v2.1** | Native multi-agent; 10-min veto; complete visual UI; deterministic budget; shared global memory | No vector embeddings; no knowledge graph; no context profiles; extraction limited to 3 items/category |
 
 ---
 
-## Fontes
+## Sources
 
 - [Memory and new controls for ChatGPT — OpenAI](https://openai.com/index/memory-and-new-controls-for-chatgpt/)
 - [What is Memory? — OpenAI Help Center](https://help.openai.com/en/articles/8983136-what-is-memory)

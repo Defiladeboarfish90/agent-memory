@@ -1,483 +1,483 @@
-# Guia do Sistema de Memória — AITEAM-X
+# Memory System Guide
 
-**Para:** Usuários do dashboard AITEAM-X
-**Atualizado:** 2026-03-24
-**Versão:** 3.0
-
----
-
-## O que é o sistema de memória?
-
-Por padrão, cada vez que você abre uma conversa com um agente, ele começa do zero — sem lembrar nada do que foi discutido antes. O sistema de memória resolve isso.
-
-Ele registra automaticamente o que acontece em cada sessão e injeta esse contexto de volta no agente na próxima vez que você conversar com ele. O resultado: o agente lembra de decisões passadas, de tarefas abertas, de problemas que já foram resolvidos — sem você precisar explicar tudo de novo.
+**For:** Users of AI agent dashboards with @inosx/agent-memory
+**Updated:** 2026-03-24
+**Version:** 3.0
 
 ---
 
-## O que o agente lembra?
+## What is the memory system?
 
-Cada agente tem seu próprio vault de memória, organizado em cinco categorias:
+By default, every time you open a conversation with an agent, it starts from scratch — with no memory of what was discussed before. The memory system solves this.
 
-| Categoria | O que guarda | Exemplos |
-|-----------|-------------|---------|
-| **Decisões** | Escolhas técnicas ou de projeto que foram tomadas | "Decidimos usar SSE em vez de WebSockets", "Padrão de nomenclatura: kebab-case para IDs de agente" |
-| **Lições** | Bugs corrigidos, problemas resolvidos, insights descobertos | "O timeout do spawn() não funciona no Windows — usar setTimeout manual", "A tag precisa ficar embutida no texto para sobreviver a updateEntry()" |
-| **Handoffs** | Resumo do que foi feito na última sessão e o que vem a seguir | "Implementamos o endpoint /sleep e o componente de badge. Próximo: testes de integração" |
-| **Tarefas** | Itens abertos no formato de checklist | "- [ ] Revisar handoffs após sessões críticas", "- [x] Migrar fluxo de handoff" |
-| **Projeto** | Contexto geral — stack, arquitetura, objetivos | "Next.js 15 App Router, sem Tailwind, VT323 pixel font, Cursor Agent CLI obrigatório" |
-
-Além do vault individual de cada agente, existe um arquivo `_project.md` compartilhado, injetado em **todos os agentes**. É o lugar certo para informações que qualquer agente precisa saber.
+It automatically records what happens in each session and injects that context back into the agent the next time you chat with it. The result: the agent remembers past decisions, open tasks, problems that were already resolved — without you having to explain everything again.
 
 ---
 
-## Como a memória é populada?
+## What does the agent remember?
 
-Existem três formas:
+Each agent has its own memory vault, organized into five default categories:
 
-### 1. Automaticamente ao fechar uma sessão
+| Category | What it stores | Examples |
+|----------|---------------|---------|
+| **Decisions** | Technical or project choices that were made | "Decided to use SSE instead of WebSockets", "Naming convention: kebab-case for agent IDs" |
+| **Lessons** | Bugs fixed, problems solved, insights discovered | "spawn() timeout doesn't work on Windows — use manual setTimeout", "The tag needs to be embedded in the text to survive updateEntry()" |
+| **Handoffs** | Summary of what was done in the last session and what's next | "Implemented the /sleep endpoint and the badge component. Next: integration tests" |
+| **Tasks** | Open items in checklist format | "- [ ] Review handoffs after critical sessions", "- [x] Migrate handoff flow" |
+| **Projects** | General context — stack, architecture, goals | "Next.js 15 App Router, no Tailwind, VT323 pixel font, Cursor Agent CLI required" |
 
-Quando você fecha a janela de chat de um agente (botão **×** na bubble ou no drawer), o sistema:
+In addition to each agent's individual vault, there is a shared `_project.md` file injected into **all agents**. It's the right place for information that any agent needs to know.
 
-1. Salva um checkpoint da conversa
-2. Gera um handoff automático a partir das últimas 6 mensagens
-3. Salva o handoff no vault com tags `auto-handoff` e `session-close`
+---
 
-Na próxima vez que você abrir uma sessão com aquele agente, ele receberá esse handoff como contexto.
+## How is memory populated?
 
-### 2. Manualmente pelo Memory Vault
+There are three ways:
 
-Clique no ícone **🧠** na barra superior para abrir o Memory Vault. De lá você pode:
-- Ver todas as memórias de cada agente por categoria
-- Criar novas entradas manualmente
-- Editar ou deletar entradas existentes
-- Buscar por texto livre (busca BM25)
+### 1. Automatically when closing a session
 
-### 3. Via script para conversas históricas
+When you close an agent's chat window (the **×** button on the bubble or drawer), the system:
 
-Para importar decisões e lições de conversas antigas que ainda não foram processadas:
+1. Saves a conversation checkpoint
+2. Generates an automatic handoff from the last 6 messages
+3. Saves the handoff in the vault with `auto-handoff` and `session-close` tags
+
+The next time you open a session with that agent, it will receive this handoff as context.
+
+### 2. Manually through the Memory Vault
+
+Click the **🧠** icon in the top bar to open the Memory Vault. From there you can:
+- View all memories for each agent by category
+- Create new entries manually
+- Edit or delete existing entries
+- Search by free text (BM25 search)
+
+### 3. Via script for historical conversations
+
+To import decisions and lessons from old conversations that haven't been processed yet:
 
 ```bash
 node scripts/import-conversations.mjs
 ```
 
-O script analisa o texto das conversas usando keywords e distribui os trechos relevantes nas categorias corretas do vault.
+The script analyzes the conversation text using keywords and distributes relevant excerpts into the correct vault categories.
 
 ---
 
-## Ciclo de vida de uma sessão
+## Session lifecycle
 
-Entender o ciclo completo ajuda a saber o que o agente vai lembrar — e o que pode se perder.
+Understanding the complete cycle helps you know what the agent will remember — and what might be lost.
 
 ```
-Abrir chat
+Open chat
     │
-    ├─ [auto-save 30s] → conversa salva em .memory/conversations/{agentId}.json
+    ├─ [auto-save 30s] → conversation saved to .memory/conversations/{agentId}.json
     │
-    ├─ [checkpoint 30s] → snapshot salvo em .vault/checkpoints/{agentId}.json
+    ├─ [checkpoint 30s] → snapshot saved to .vault/checkpoints/{agentId}.json
     │
-    ├─ [fechamento via ×]
+    ├─ [close via ×]
     │       │
-    │       ├─ 1. Checkpoint final salvo
-    │       ├─ 2. Handoff gerado (últimas 6 mensagens)
-    │       ├─ 3. Decisions e lessons extraídos da conversa (heurística PT+EN)
-    │       └─ 4. Tudo salvo no vault → será injetado na próxima sessão
+    │       ├─ 1. Final checkpoint saved
+    │       ├─ 2. Handoff generated (last 6 messages)
+    │       ├─ 3. Decisions and lessons extracted from conversation (PT+EN heuristic)
+    │       └─ 4. Everything saved to vault → will be injected in the next session
     │
-    ├─ [fechamento inesperado (aba/navegador)]
+    ├─ [unexpected close (tab/browser)]
     │       │
-    │       └─ sendBeacon salva checkpoint + conversa (handoff NÃO é gerado)
+    │       └─ sendBeacon saves checkpoint + conversation (handoff is NOT generated)
     │
-    └─ [próxima sessão]
+    └─ [next session]
             │
-            └─ Injeção de contexto automática (ver seção abaixo)
+            └─ Automatic context injection (see section below)
 ```
 
-**O checkpoint automático a cada 30s** protege o conteúdo da conversa. Mesmo que a janela feche de forma inesperada, o histórico fica preservado em disco por até 7 dias.
+**The automatic checkpoint every 30s** protects the conversation content. Even if the window closes unexpectedly, the history is preserved on disk for up to 7 days.
 
 ---
 
-## Como o contexto é injetado na próxima sessão
+## How context is injected in the next session
 
-Este é o mecanismo central do sistema: o que exatamente o agente recebe quando você inicia uma nova conversa.
+This is the central mechanism of the system: what exactly the agent receives when you start a new conversation.
 
-### O que é injetado
+### What is injected
 
-1. **Contexto do projeto** — conteúdo completo de `_project.md`
-2. **Handoff da última sessão** — o resumo mais recente, tem prioridade máxima
-3. **Decisões relevantes** — até 3 decisões selecionadas por busca textual (BM25) baseada no que você está pedindo
-4. **Lições relevantes** — até 2 lições selecionadas da mesma forma
-5. **Todas as tarefas abertas** — itens com `[ ]` não marcados como concluídos
-6. **Recovery snapshot** — se há checkpoint válido, as últimas 3 mensagens são incluídas
+1. **Project context** — full content of `_project.md`
+2. **Last session handoff** — the most recent summary, has maximum priority
+3. **Relevant decisions** — up to 3 decisions selected by text search (BM25) based on what you're asking
+4. **Relevant lessons** — up to 2 lessons selected the same way
+5. **All open tasks** — items with `[ ]` not marked as completed
+6. **Recovery snapshot** — if there's a valid checkpoint, the last 3 messages are included
 
-### Como a relevância é calculada
+### How relevance is calculated
 
-O sistema usa **BM25** (algoritmo de busca textual) para selecionar as entradas mais relevantes. BM25 compara o texto da sua mensagem com o conteúdo das memórias armazenadas e retorna as mais similares.
+The system uses **BM25** (text search algorithm) to select the most relevant entries. BM25 compares the text of your message with the content of stored memories and returns the most similar ones.
 
-Na prática: se você pede "revise o fluxo de autenticação", o sistema vai injetar decisões e lições que mencionam autenticação, sessão, tokens — e não memórias sobre CSS ou deploy.
+In practice: if you ask "review the authentication flow", the system will inject decisions and lessons that mention authentication, session, tokens — and not memories about CSS or deployment.
 
-### Budget de tokens
+### Token budget
 
-O contexto injetado tem um limite de **2.000 tokens** (estimados como `comprimento_do_texto / 4`). Se as memórias selecionadas ultrapassarem esse limite, o sistema prioriza na seguinte ordem:
+The injected context has a limit of **2,000 tokens** (estimated as `text_length / 4`). If the selected memories exceed this limit, the system prioritizes in the following order:
 
-1. **Handoff** — sempre incluído, prioridade máxima
-2. **Tarefas abertas** — sempre incluídas
-3. **Decisões relevantes** — cortadas se necessário
-4. **Lições relevantes** — cortadas primeiro
-5. **Contexto do projeto** — incluído por último
+1. **Handoff** — always included, maximum priority
+2. **Open tasks** — always included
+3. **Relevant decisions** — trimmed if necessary
+4. **Relevant lessons** — trimmed first
+5. **Project context** — included last
 
-### O que isso significa na prática
+### What this means in practice
 
-O agente não lembra de tudo — ele lembra do que é **mais relevante para a conversa atual**. Para assuntos específicos que você quer garantir que sejam lembrados, use a categoria correta no vault (ex: decisões importantes em "Decisões", não em "Projeto").
+The agent doesn't remember everything — it remembers what is **most relevant to the current conversation**. For specific topics you want to ensure are remembered, use the correct vault category (e.g., important decisions in "Decisions", not in "Projects").
 
 ---
 
-## O arquivo `_project.md` — memória compartilhada
+## The `_project.md` file — shared memory
 
-O arquivo `.memory/_project.md` é especial: ele é injetado em **todos os agentes**, em todas as sessões.
+The `.memory/_project.md` file is special: it is injected into **all agents**, in every session.
 
-### Quando usar
+### When to use
 
-Use `_project.md` para informações que **qualquer agente precisa saber sem precisar perguntar**:
-- Stack tecnológico do projeto
-- Convenções de código adotadas pelo time
-- Objetivos da sprint atual
-- Decisões arquiteturais que afetam todos
-- Restrições do ambiente (ex: "deploys só às sextas-feiras")
+Use `_project.md` for information that **any agent needs to know without having to ask**:
+- Project tech stack
+- Code conventions adopted by the team
+- Current sprint goals
+- Architectural decisions that affect everyone
+- Environment constraints (e.g., "deploys only on Fridays")
 
-### O que não colocar
+### What not to include
 
-- Informações específicas de um agente — use o vault individual
-- Tarefas — use a categoria "Tarefas" no vault de cada agente
-- Histórico de conversas — isso fica nos checkpoints
+- Agent-specific information — use the individual vault
+- Tasks — use the "Tasks" category in each agent's vault
+- Conversation history — that's what checkpoints are for
 
-### Exemplo de `_project.md` bem escrito
+### Example of a well-written `_project.md`
 
 ```markdown
-# Projeto AITEAM-X
+# Project AITEAM-X
 
-**Stack:** Next.js 15 App Router, React 19, TypeScript, sem Tailwind
-**Fonte:** VT323 (pixel art), estilos em app/globals.css
-**Runtime obrigatório:** Cursor Agent CLI
+**Stack:** Next.js 15 App Router, React 19, TypeScript, no Tailwind
+**Font:** VT323 (pixel art), styles in app/globals.css
+**Required runtime:** Cursor Agent CLI
 
-## Convenções
-- IDs de agente: kebab-case (bmad-master, game-designer)
-- API routes: REST para CRUD, SSE para streaming
+## Conventions
+- Agent IDs: kebab-case (bmad-master, game-designer)
+- API routes: REST for CRUD, SSE for streaming
 
-## Sprint atual
-- Foco: sistema de memória v3.0
-- Documentação em /docs obrigatória para features novas
+## Current sprint
+- Focus: memory system v3.0
+- Documentation in /docs required for new features
 ```
 
-**Dica:** Mantenha o `_project.md` com menos de 500 palavras. Um arquivo longo pode causar truncamento no budget de tokens, empurrando informações mais relevantes (decisões, handoffs) para fora do contexto injetado.
+**Tip:** Keep `_project.md` under 500 words. A long file can cause truncation in the token budget, pushing more relevant information (decisions, handoffs) out of the injected context.
 
 ---
 
-## Memory Vault — interface visual
+## Memory Vault — visual interface
 
-O Memory Vault (ícone 🧠 na barra superior) é a interface principal para gerenciar memórias.
+The Memory Vault (🧠 icon in the top bar) is the main interface for managing memories.
 
-### Navegação
+### Navigation
 
-- **Seletor de agente** (topo): escolha qual agente visualizar
-- **Abas de categoria**: Decisões / Lições / Handoffs / Tarefas / Projeto
-- **Campo de busca**: busca BM25 em tempo real (debounce de 300ms, retorna até 15 resultados)
+- **Agent selector** (top): choose which agent to view
+- **Category tabs**: Decisions / Lessons / Handoffs / Tasks / Projects
+- **Search field**: real-time BM25 search (300ms debounce, returns up to 15 results)
 
-### Criando entradas manualmente
+### Creating entries manually
 
-1. Selecione o agente
-2. Selecione a categoria
-3. Clique em **+ Nova entrada**
-4. Digite o conteúdo (suporta markdown)
-5. Salve
+1. Select the agent
+2. Select the category
+3. Click **+ New entry**
+4. Type the content (supports markdown)
+5. Save
 
-Entradas manuais são permanentes até você deletar.
+Manual entries are permanent until you delete them.
 
-### Editando entradas
+### Editing entries
 
-Clique no ícone de lápis ao lado da entrada. O conteúdo fica editável inline. Salve com Enter ou clique no ícone de check.
+Click the pencil icon next to the entry. The content becomes editable inline. Save with Enter or click the check icon.
 
-### Deletando entradas
+### Deleting entries
 
-Clique no **×** ao lado da entrada. Entradas deletadas não podem ser recuperadas.
-
----
-
-## Tags — como funcionam
-
-Cada entrada no vault pode ter **tags** associadas. As tags:
-
-- São extraídas automaticamente do texto (palavras precedidas de `#`)
-- Aparecem junto à entrada no Memory Vault
-- **Afetam a busca BM25**: uma memória tagueada com `#auth` vai aparecer em buscas relacionadas a autenticação mesmo que o texto principal não mencione explicitamente
-
-### Tags especiais do sistema
-
-| Tag | Origem | Significado |
-|-----|--------|------------|
-| `#auto-handoff` | Frontend | Handoff gerado automaticamente ao fechar sessão |
-| `#session-close` | Frontend | Marca entradas criadas no fechamento da sessão |
-| `#compacted` | Compactação | Entrada gerada durante a compactação automática |
-| `#auto-extract` | Compactação | Insight extraído por heurística de conversas recortadas |
+Click the **×** next to the entry. Deleted entries cannot be recovered.
 
 ---
 
-## Boas práticas por categoria
+## Tags — how they work
 
-### Decisões
+Each vault entry can have **tags** associated with it. Tags:
 
-- **Seja específico:** "Decidimos usar SSE" é vago. Melhor: "Adotar SSE em vez de WebSockets — ambiente de deploy não suporta conexões bidirecionais persistentes."
-- **Inclua o motivo:** Uma decisão sem contexto é difícil de revisitar. Sempre explique o porquê.
-- **Uma decisão por entrada:** Agrupar múltiplas decisões em uma entrada dificulta a busca BM25.
-- **Use hashtags relevantes:** `#sse #architecture #deploy` ajudam a recuperar a decisão em contextos futuros.
+- Are automatically extracted from the text (words preceded by `#`)
+- Appear alongside the entry in the Memory Vault
+- **Affect BM25 search**: a memory tagged with `#auth` will appear in authentication-related searches even if the main text doesn't explicitly mention it
 
-### Lições
+### System tags
 
-- **Foco no problema, não na solução:** Comece com o sintoma: "O spawn() no Windows não reporta código de saída confiável quando o processo é matado via timeout." Depois a solução.
-- **Inclua onde ocorre:** "No Windows", "em ambiente de produção", "quando o arquivo de configuração está ausente" — contexto de quando a lição se aplica.
-- **Registre anti-patterns:** Se você encontrou uma solução ruim, registre também para não repetir.
+| Tag | Origin | Meaning |
+|-----|--------|---------|
+| `#auto-handoff` | Frontend | Handoff automatically generated when closing a session |
+| `#session-close` | Frontend | Marks entries created at session close |
+| `#compacted` | Compaction | Entry generated during automatic compaction |
+| `#auto-extract` | Compaction | Insight extracted by heuristic from trimmed conversations |
+
+---
+
+## Best practices by category
+
+### Decisions
+
+- **Be specific:** "Decided to use SSE" is vague. Better: "Adopt SSE instead of WebSockets — deployment environment doesn't support persistent bidirectional connections."
+- **Include the reason:** A decision without context is hard to revisit. Always explain the why.
+- **One decision per entry:** Grouping multiple decisions in one entry makes BM25 search harder.
+- **Use relevant hashtags:** `#sse #architecture #deploy` help retrieve the decision in future contexts.
+
+### Lessons
+
+- **Focus on the problem, not the solution:** Start with the symptom: "spawn() on Windows doesn't reliably report exit code when the process is killed via timeout." Then the solution.
+- **Include where it applies:** "On Windows", "in production environment", "when the config file is missing" — context of when the lesson applies.
+- **Record anti-patterns:** If you found a bad solution, record it too to avoid repeating it.
 
 ### Handoffs
 
-- **O sistema gera automaticamente:** Ao fechar a sessão com o botão ×, um handoff é criado a partir das últimas 6 mensagens.
-- **Crie manualmente para sessões críticas:** Se a sessão foi muito importante ou longa, abra o vault e crie um handoff manual mais detalhado.
-- **Inclua o próximo passo:** "Implementamos X. Próximo: Y." é mais útil que só "Implementamos X."
+- **The system generates automatically:** When closing the session with the × button, a handoff is created from the last 6 messages.
+- **Create manually for critical sessions:** If the session was very important or long, open the vault and create a more detailed manual handoff.
+- **Include the next step:** "Implemented X. Next: Y." is more useful than just "Implemented X."
 
-### Tarefas
+### Tasks
 
-- **Use o formato padrão:** `- [ ] descrição da tarefa` (não concluída) / `- [x] descrição` (concluída)
-- **Marque quando concluir:** Tarefas com `[ ]` aparecem em **todas as sessões futuras** daquele agente. Se ficou irrelevante, delete ou marque como `[x]`.
-- **Uma ação por tarefa:** "Implementar X e Y e testar Z" deve ser três tarefas separadas.
+- **Use the standard format:** `- [ ] task description` (not completed) / `- [x] description` (completed)
+- **Mark when done:** Tasks with `[ ]` appear in **all future sessions** for that agent. If it became irrelevant, delete or mark as `[x]`.
+- **One action per task:** "Implement X and Y and test Z" should be three separate tasks.
 
-### Projeto
+### Projects
 
-- **Informações estáveis:** A categoria Projeto é para contexto que muda raramente.
-- **Não duplique o `_project.md`:** Se algo é relevante para todos os agentes, coloque em `_project.md`. Se é específico a um agente, use a categoria Projeto do vault desse agente.
+- **Stable information:** The Projects category is for context that changes rarely.
+- **Don't duplicate `_project.md`:** If something is relevant to all agents, put it in `_project.md`. If it's specific to one agent, use that agent's vault Projects category.
 
 ---
 
-## Boas práticas para melhor desempenho
+## Best practices for better performance
 
-### 1. Mantenha o `_project.md` enxuto
+### 1. Keep `_project.md` lean
 
-O contexto do projeto é injetado em todas as sessões de todos os agentes. Um arquivo longo consome budget de tokens que poderia ser usado para decisões e lições mais relevantes. Objetivo: **menos de 500 palavras**.
+Project context is injected in all sessions of all agents. A long file consumes token budget that could be used for more relevant decisions and lessons. Goal: **under 500 words**.
 
-### 2. Feche sessões pelo botão ×
+### 2. Close sessions via the × button
 
-O fechamento via botão × é o único caminho que gera handoffs automáticos. Fechar a aba ou o navegador salva apenas o checkpoint via `sendBeacon` — sem handoff.
+Closing via the × button is the only path that generates automatic handoffs. Closing the tab or browser only saves the checkpoint via `sendBeacon` — no handoff.
 
-### 3. Revise handoffs de sessões importantes
+### 3. Review handoffs from important sessions
 
-O handoff automático é baseado nas últimas 6 mensagens. Se a conversa foi longa e as decisões críticas aconteceram no meio, o handoff pode não capturá-las. Nesses casos, crie um handoff manual complementar no vault.
+The automatic handoff is based on the last 6 messages. If the conversation was long and critical decisions happened in the middle, the handoff may not capture them. In those cases, create a supplementary manual handoff in the vault.
 
-### 4. Use tags estrategicamente
+### 4. Use tags strategically
 
-Tags como `#api`, `#performance`, `#bug` conectam memórias de forma que a busca BM25 consegue recuperar. Quando o agente recebe "otimize a performance da API", memórias com `#api` e `#performance` têm mais chance de serem injetadas.
+Tags like `#api`, `#performance`, `#bug` connect memories in a way that BM25 search can retrieve. When the agent receives "optimize the API performance", memories with `#api` and `#performance` have a better chance of being injected.
 
-### 5. Limpe tarefas concluídas
+### 5. Clean up completed tasks
 
-Tarefas com `[ ]` são injetadas em todas as sessões. Uma lista longa de tarefas abertas consome tokens e polui o contexto. Marque como `[x]` ou delete quando concluir.
+Tasks with `[ ]` are injected in all sessions. A long list of open tasks consumes tokens and pollutes the context. Mark as `[x]` or delete when done.
 
-### 6. Uma ideia por entrada
+### 6. One idea per entry
 
-Entradas granulares são recuperadas com mais precisão pelo BM25 do que entradas que misturam vários assuntos. "Decidimos usar SSE" e "Adotamos kebab-case para IDs" devem ser entradas separadas.
+Granular entries are retrieved with more precision by BM25 than entries that mix multiple topics. "Decided to use SSE" and "Adopted kebab-case for IDs" should be separate entries.
 
-### 7. Deixe a compactação trabalhar
+### 7. Let compaction do its work
 
-O sistema executa compactação automática a cada 10 minutos quando o dashboard está aberto. Ela cuida de:
-- Limpar checkpoints com mais de 7 dias
-- Recortar conversas longas (> 20 mensagens)
-- Consolidar categorias com mais de 30 entradas
+The system runs automatic compaction every 10 minutes when the dashboard is open. It handles:
+- Cleaning checkpoints older than 7 days
+- Trimming long conversations (> 20 messages)
+- Consolidating categories with more than 30 entries
 
-Se precisar forçar manualmente:
+To force it manually:
 
 ```bash
 curl -X POST http://localhost:3000/api/memory/compact
 ```
 
-### 8. Monitore o vault de agentes ativos
+### 8. Monitor active agent vaults
 
-Agentes usados com frequência acumulam memórias rapidamente. Verifique periodicamente se:
-- Há entradas duplicadas ou contraditórias
-- Handoffs antigos ainda são relevantes
-- Lições foram incorporadas no código (e podem ser removidas)
+Frequently used agents accumulate memories quickly. Periodically check if:
+- There are duplicate or contradictory entries
+- Old handoffs are still relevant
+- Lessons have been incorporated into the code (and can be removed)
 
 ---
 
-## Compactação automática
+## Automatic compaction
 
-Com o tempo, o vault acumula muitas entradas, conversas ficam longas e checkpoints antigos ocupam espaço. A compactação automática resolve isso sem limpeza manual.
+Over time, the vault accumulates many entries, conversations get long, and old checkpoints take up space. Automatic compaction solves this without manual cleanup.
 
-### O que a compactação faz
+### What compaction does
 
-| Etapa | O que faz | Resultado |
-|-------|----------|-----------|
-| **Checkpoints expirados** | Remove checkpoints com mais de 7 dias | Espaço liberado |
-| **Conversas longas** | Recorta conversas com mais de 20 mensagens, preserva apenas as mais recentes | Decisões e lições extraídas das mensagens removidas são salvas no vault |
-| **Vault superlotado** | Consolida categorias com mais de 30 entradas — mantém as 20 mais recentes e gera um resumo das demais | Vault mais enxuto sem perda de informação |
-| **Índice de busca** | Reconstrói o índice BM25 após as alterações | Busca atualizada |
-| **Arquivos legados** | Remove `.bak` de migração e `.md` flat já migrados | Limpeza de disco |
+| Step | What it does | Result |
+|------|-------------|--------|
+| **Expired checkpoints** | Removes checkpoints older than 7 days | Space freed |
+| **Long conversations** | Trims conversations with more than 20 messages, preserves only the most recent | Decisions and lessons extracted from removed messages are saved to the vault |
+| **Overcrowded vault** | Consolidates categories with more than 30 entries — keeps the 20 most recent and generates a summary of the rest | Leaner vault without information loss |
+| **Search index** | Rebuilds the BM25 index after changes | Updated search |
+| **Legacy files** | Removes migration `.bak` and flat `.md` files already migrated | Disk cleanup |
 
-### Frequência
+### Frequency
 
-O dashboard executa compactação automaticamente a cada 10 minutos. Também verifica ao carregar se a última compactação foi há mais de 10 minutos — se sim, executa imediatamente.
+The dashboard runs compaction automatically every 10 minutes. It also checks on load whether the last compaction was more than 10 minutes ago — if so, it runs immediately.
 
-### O que acontece com as mensagens removidas de conversas longas?
+### What happens to messages removed from long conversations?
 
-O recorte não é destrutivo. Antes de remover mensagens antigas, o sistema:
+Trimming is not destructive. Before removing old messages, the system:
 
-1. **Analisa o texto** procurando padrões de decisão (ex: "decidimos", "vamos usar", "opted for") e de lição (ex: "aprendemos", "importante", "descobrimos")
-2. **Salva os insights encontrados** como entradas no vault com tags `#compacted` e `#auto-extract`
-3. **Gera um resumo** (handoff) das últimas mensagens removidas com tag `#auto-handoff`
+1. **Analyzes the text** looking for decision patterns (e.g., "we decided", "we'll use", "opted for") and lesson patterns (e.g., "we learned", "important", "we discovered")
+2. **Saves found insights** as vault entries with `#compacted` and `#auto-extract` tags
+3. **Generates a summary** (handoff) of the last removed messages with `#auto-handoff` tag
 
-Essas entradas ficam marcadas no vault para que você saiba que foram geradas pela compactação, não manualmente.
+These entries are marked in the vault so you know they were generated by compaction, not manually.
 
-### Para verificar o resultado da última compactação
+### To check the result of the last compaction
 
 ```bash
 curl http://localhost:3000/api/memory/compact
 ```
 
-### Segurança
+### Security
 
-A compactação só pode ser executada a partir de `localhost`. Requisições de IPs externos recebem `403 Forbidden`.
-
----
-
-## Estudos de caso
-
-### Caso 1: Bug corrigido ontem, esquecido hoje
-
-**Situação:** Você passou uma hora na sexta-feira descobrindo que o `spawn()` do Node.js não dispara o evento `close` com código de saída confiável no Windows quando o processo é morto por timeout. Corrigiu usando um booleano `timedOut` + `setTimeout` manual + `proc.kill()`. Na segunda-feira, abre uma nova sessão e não lembra mais por que o código está escrito daquele jeito.
-
-**Com o sistema de memória:**
-- Ao fechar a sessão de sexta (botão ×), um handoff é gerado automaticamente
-- Você percebe que a lição é importante e adiciona manualmente no vault: "O evento 'close' do spawn() no Windows não reporta código de saída confiável quando o processo é terminado via timeout. Solução: usar setTimeout manual + boolean timedOut + proc.kill()."
-- Na segunda, ao abrir nova sessão sobre o mesmo código, essa lição é injetada via BM25
-- O agente entende imediatamente o contexto sem você precisar explicar
-
-**Dica:** Para lições técnicas importantes, registre manualmente no vault — é mais confiável do que depender apenas do handoff automático.
-
-### Caso 2: Decisão de arquitetura esquecida
-
-**Situação:** Três semanas atrás, o time decidiu não usar WebSockets e adotar SSE para streaming, porque o ambiente de deploy não suporta conexões bidirecionais persistentes. Hoje um novo desenvolvedor propõe usar WebSockets.
-
-**Com o sistema de memória:**
-- A decisão foi registrada em "Decisões" do agente bmad-master: "Adotar SSE em vez de WebSockets — ambiente de deploy não suporta conexões bidirecionais persistentes. #sse #architecture"
-- Ao iniciar uma sessão sobre streaming, o BM25 recupera essa decisão e a injeta no contexto
-- O agente proativamente menciona a restrição
-
-### Caso 3: Tarefas que atravessam múltiplas sessões
-
-**Situação:** Você está implementando um sistema grande que vai durar várias semanas. Cada sessão faz progresso parcial.
-
-**Com o sistema de memória:**
-- Cada sessão encerrada gera um handoff automático
-- Tarefas abertas ficam visíveis: "- [ ] Implementar processPending() com retry", "- [ ] Adicionar flag --dry-run"
-- Ao abrir a próxima sessão, o agente sabe exatamente onde parou e o que falta
-- Ao concluir uma tarefa, marque como `[x]` — ela para de aparecer nas próximas sessões
-
-### Caso 4: Contexto de projeto para um agente novo
-
-**Situação:** Você precisa conversar com o agente `game-designer` pela primeira vez. Ele não sabe nada sobre o projeto.
-
-**Com o sistema de memória:**
-- O `_project.md` contém stack, convenções, restrições do projeto
-- É injetado automaticamente na primeira sessão com qualquer agente
-- O agente entende imediatamente o ambiente
-- Você não precisa explicar o contexto em cada nova conversa
+Compaction can only be executed from `localhost`. Requests from external IPs receive `403 Forbidden`.
 
 ---
 
-## Guia de solução de problemas
+## Case studies
 
-### O agente não está lembrando de algo importante
+### Case 1: Bug fixed yesterday, forgotten today
 
-**Causa provável:** A memória não foi criada, ou não é relevante o suficiente para a busca BM25.
+**Situation:** You spent an hour on Friday discovering that Node.js `spawn()` doesn't fire the `close` event with a reliable exit code on Windows when the process is killed by timeout. You fixed it using a `timedOut` boolean + manual `setTimeout` + `proc.kill()`. On Monday, you open a new session and no longer remember why the code is written that way.
 
-**O que fazer:**
-1. Abra o Memory Vault (🧠)
-2. Verifique se a memória existe na categoria correta
-3. Se não existe: crie manualmente
-4. Se existe mas o agente não usa: reformule o texto para incluir palavras-chave mais específicas ao contexto em que você espera que ela seja injetada
-5. Adicione tags relevantes para ampliar a superfície de busca
+**With the memory system:**
+- When closing Friday's session (× button), a handoff is automatically generated
+- You notice the lesson is important and manually add it to the vault: "The 'close' event from spawn() on Windows doesn't reliably report exit code when the process is terminated via timeout. Solution: use manual setTimeout + timedOut boolean + proc.kill()."
+- On Monday, when opening a new session about the same code, this lesson is injected via BM25
+- The agent immediately understands the context without you needing to explain
 
-### O handoff automático não foi gerado
+**Tip:** For important technical lessons, register them manually in the vault — it's more reliable than depending solely on the automatic handoff.
 
-**Causa provável:** A sessão foi encerrada de forma inesperada (não pelo botão ×).
+### Case 2: Forgotten architecture decision
 
-**O que fazer:**
-- Feche sessões sempre pelo botão ×
-- Se a sessão já passou: crie um handoff manualmente no vault resumindo o que foi discutido
+**Situation:** Three weeks ago, the team decided not to use WebSockets and to adopt SSE for streaming, because the deployment environment doesn't support persistent bidirectional connections. Today a new developer proposes using WebSockets.
 
-### O agente está recebendo informações desatualizadas
+**With the memory system:**
+- The decision was recorded in bmad-master's "Decisions": "Adopt SSE instead of WebSockets — deployment environment doesn't support persistent bidirectional connections. #sse #architecture"
+- When starting a session about streaming, BM25 retrieves this decision and injects it into the context
+- The agent proactively mentions the constraint
 
-**Causa provável:** Uma memória antiga ainda está no vault com informação incorreta.
+### Case 3: Tasks that span multiple sessions
 
-**O que fazer:**
-1. Abra o Memory Vault
-2. Busque o termo desatualizado
-3. Edite ou delete a entrada antiga
-4. Crie uma nova entrada com a informação correta
+**Situation:** You're implementing a large system that will take several weeks. Each session makes partial progress.
 
-### O vault de um agente está muito pesado
+**With the memory system:**
+- Each closed session generates an automatic handoff
+- Open tasks remain visible: "- [ ] Implement processPending() with retry", "- [ ] Add --dry-run flag"
+- When opening the next session, the agent knows exactly where it left off and what's remaining
+- When completing a task, mark it as `[x]` — it stops appearing in future sessions
 
-**Causa provável:** Muitas sessões sem compactação recente.
+### Case 4: Project context for a new agent
 
-**O que fazer:**
-1. Verifique se o dashboard esteve aberto nos últimos dias (compactação automática requer dashboard ativo)
-2. Force uma compactação: `curl -X POST http://localhost:3000/api/memory/compact`
-3. Ou revise manualmente: delete handoffs antigos, consolide lições similares
-4. Tarefas concluídas (`[x]`) podem ser deletadas — já não são injetadas, mas poluem a visualização
+**Situation:** You need to chat with the `game-designer` agent for the first time. It knows nothing about the project.
 
-### O `_project.md` está sendo truncado
-
-**Causa provável:** O arquivo ficou muito longo e ultrapassa o budget de 2.000 tokens.
-
-**O que fazer:**
-1. Revise o `_project.md` e remova informações que não são relevantes para todos os agentes
-2. Mova contexto específico de agente para o vault desse agente
-3. Mantenha o arquivo em **menos de 500 palavras** (~2.000 caracteres)
-
-### A busca BM25 retorna resultados pouco relevantes
-
-**Causa provável:** O índice pode estar desatualizado após operações manuais no filesystem.
-
-**O que fazer:**
-1. Force uma compactação (que reconstrói o índice): `curl -X POST http://localhost:3000/api/memory/compact`
-2. Verifique se as entradas usam vocabulário consistente — BM25 é sensível às palavras exatas
+**With the memory system:**
+- `_project.md` contains the stack, conventions, and project constraints
+- It's automatically injected in the first session with any agent
+- The agent immediately understands the environment
+- You don't need to explain the context in every new conversation
 
 ---
 
-## O que NÃO é armazenado automaticamente
+## Troubleshooting guide
 
-- **Arquivos e imagens** enviados na conversa
-- **Sessões encerradas sem o botão ×** — fechar a aba ou o navegador salva o checkpoint via `sendBeacon`, mas **não gera handoff**
-- **Conteúdo de chamadas de ferramentas** — se o agente usou uma ferramenta, o resultado da ferramenta não é extraído como memória
-- **Mensagens internas** — mensagens marcadas como `internal` (geradas pelo sistema) não são salvas em checkpoints nem usadas para handoffs
+### The agent isn't remembering something important
+
+**Probable cause:** The memory wasn't created, or isn't relevant enough for BM25 search.
+
+**What to do:**
+1. Open the Memory Vault (🧠)
+2. Check if the memory exists in the correct category
+3. If it doesn't exist: create it manually
+4. If it exists but the agent doesn't use it: rephrase the text to include more specific keywords for the context where you expect it to be injected
+5. Add relevant tags to expand the search surface
+
+### The automatic handoff wasn't generated
+
+**Probable cause:** The session was closed unexpectedly (not via the × button).
+
+**What to do:**
+- Always close sessions via the × button
+- If the session already passed: create a handoff manually in the vault summarizing what was discussed
+
+### The agent is receiving outdated information
+
+**Probable cause:** An old memory is still in the vault with incorrect information.
+
+**What to do:**
+1. Open the Memory Vault
+2. Search for the outdated term
+3. Edit or delete the old entry
+4. Create a new entry with the correct information
+
+### An agent's vault is too heavy
+
+**Probable cause:** Many sessions without recent compaction.
+
+**What to do:**
+1. Check if the dashboard has been open in recent days (automatic compaction requires an active dashboard)
+2. Force a compaction: `curl -X POST http://localhost:3000/api/memory/compact`
+3. Or review manually: delete old handoffs, consolidate similar lessons
+4. Completed tasks (`[x]`) can be deleted — they're no longer injected, but clutter the view
+
+### `_project.md` is being truncated
+
+**Probable cause:** The file got too long and exceeds the 2,000 token budget.
+
+**What to do:**
+1. Review `_project.md` and remove information that isn't relevant to all agents
+2. Move agent-specific context to that agent's vault
+3. Keep the file under **500 words** (~2,000 characters)
+
+### BM25 search returns poorly relevant results
+
+**Probable cause:** The index may be outdated after manual filesystem operations.
+
+**What to do:**
+1. Force a compaction (which rebuilds the index): `curl -X POST http://localhost:3000/api/memory/compact`
+2. Check if entries use consistent vocabulary — BM25 is sensitive to exact words
 
 ---
 
-## Perguntas frequentes
+## What is NOT stored automatically
 
-**O agente não está lembrando de algo importante — o que faço?**
-Abra o Memory Vault (🧠), vá à categoria correta e adicione a entrada manualmente. Ela será injetada na próxima sessão se for relevante para a busca BM25, ou sempre se for um handoff ou tarefa aberta.
+- **Files and images** sent in the conversation
+- **Sessions closed without the × button** — closing the tab or browser saves the checkpoint via `sendBeacon`, but **does not generate a handoff**
+- **Tool call content** — if the agent used a tool, the tool result is not extracted as memory
+- **Internal messages** — messages marked as `internal` (system-generated) are not saved in checkpoints nor used for handoffs
 
-**Posso apagar tudo e começar do zero?**
-Sim — delete as entradas pelo Memory Vault. O `_project.md` pode ser editado diretamente em texto. Os checkpoints ficam em `.memory/.vault/checkpoints/` e podem ser deletados manualmente.
+---
 
-**As memórias de um agente afetam outros agentes?**
-Não diretamente. Cada agente tem seu vault isolado. A única memória compartilhada é o `_project.md`.
+## Frequently asked questions
 
-**Como sei o que o agente vai receber na próxima sessão?**
-O agente recebe: último handoff + decisões/lições relevantes ao seu comando + todas as tarefas abertas + `_project.md`. Você pode ver essas entradas no Memory Vault antes de iniciar a conversa.
+**The agent isn't remembering something important — what do I do?**
+Open the Memory Vault (🧠), go to the correct category, and add the entry manually. It will be injected in the next session if relevant to BM25 search, or always if it's a handoff or open task.
 
-**Quanto handoffs são mantidos?**
-Apenas o handoff mais recente é injetado no contexto. Handoffs anteriores permanecem no vault para consulta, mas não são injetados automaticamente — apenas se forem relevantes na busca BM25.
+**Can I delete everything and start from scratch?**
+Yes — delete entries through the Memory Vault. `_project.md` can be edited directly as text. Checkpoints are in `.memory/.vault/checkpoints/` and can be deleted manually.
 
-**A compactação pode perder informações importantes?**
-A compactação tenta extrair decisões e lições das mensagens removidas usando pattern matching. Para informações realmente críticas, registre-as manualmente no vault — é a forma mais confiável de garantir que o agente lembre.
+**Do one agent's memories affect other agents?**
+Not directly. Each agent has its isolated vault. The only shared memory is `_project.md`.
 
-**O que acontece quando o dashboard fica fechado por muito tempo?**
-Checkpoints expiram após 7 dias. As memórias no vault (decisões, lições, handoffs, tarefas, projetos) persistem indefinidamente. A compactação só roda quando o dashboard está aberto — após períodos longos sem uso, a primeira abertura pode disparar uma compactação mais pesada.
+**How do I know what the agent will receive in the next session?**
+The agent receives: latest handoff + decisions/lessons relevant to your command + all open tasks + `_project.md`. You can see these entries in the Memory Vault before starting the conversation.
 
-**Posso editar o `_project.md` direto no editor de texto?**
-Sim. O arquivo fica em `.memory/_project.md` e é plain text markdown. Alterações são refletidas imediatamente na próxima sessão de qualquer agente.
+**How many handoffs are kept?**
+Only the most recent handoff is injected into the context. Previous handoffs remain in the vault for reference, but are not automatically injected — only if they're relevant in BM25 search.
+
+**Can compaction lose important information?**
+Compaction tries to extract decisions and lessons from removed messages using pattern matching. For truly critical information, register it manually in the vault — it's the most reliable way to ensure the agent remembers.
+
+**What happens when the dashboard stays closed for a long time?**
+Checkpoints expire after 7 days. Vault memories (decisions, lessons, handoffs, tasks, projects) persist indefinitely. Compaction only runs when the dashboard is open — after long periods without use, the first opening may trigger a heavier compaction.
+
+**Can I edit `_project.md` directly in a text editor?**
+Yes. The file is at `.memory/_project.md` and is plain text markdown. Changes are reflected immediately in the next session of any agent.
