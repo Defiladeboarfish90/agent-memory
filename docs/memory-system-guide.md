@@ -1,8 +1,10 @@
 # Memory System Guide
 
-**For:** Users of AI agent dashboards with @inosx/agent-memory
-**Updated:** 2026-03-24
+**For:** Users of AI agent dashboards with @inosx/agent-memory  
+**Updated:** 2026-03-24  
 **Version:** 3.0
+
+> **Using the npm package only (no dashboard)?** See the [User Guide](user-guide.md) for installation, CLI, and library usage in standalone projects.
 
 ---
 

@@ -14,11 +14,62 @@ Built and battle-tested inside [AITEAM-X](https://github.com/INOSX/AITeam), extr
 - **Session checkpoints** — Save and recover agent sessions with automatic expiry
 - **Compaction** — Extract insights from conversations, trim old messages, cap vault entries
 - **Migration** — One-way migration from flat markdown to structured vault format
+- **CLI** — `agent-memory` command to list agents, manage vault entries, search, edit project context, preview injection, run compaction, and migrate
 
 ## Install
 
 ```bash
 npm install @inosx/agent-memory
+```
+
+The package exposes a `bin` named `agent-memory` (also available via `npx @inosx/agent-memory` after install).
+
+## CLI
+
+Global options (place before the subcommand, e.g. `agent-memory --dir ./.memory agents`):
+
+| Option | Description |
+|--------|-------------|
+| `--dir <path>` | Memory root directory (default: `.memory` relative to the current working directory) |
+| `AGENT_MEMORY_DIR` | Environment variable override for the memory directory |
+| `--json` | Machine-readable JSON output for scripts and automation |
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `agents` | List agent IDs (directories under the memory root) |
+| `project show` | Print `_project.md` (JSON includes `exists: false` if missing) |
+| `project edit` | Create or open `_project.md` in `$EDITOR` (or `notepad` on Windows) |
+| `vault list <agentId> <category>` | List entries (id, date, snippet) |
+| `vault get <agentId> <category> <id>` | Print full entry body |
+| `vault add <agentId> <category>` | Append entry; body via `--content`, `--file`, or stdin |
+| `vault edit <agentId> <category> <id>` | Replace body; body via `--content`, `--file`, or stdin |
+| `vault delete <agentId> <category> <id>` | Remove entry; use `--force` in non-interactive scripts |
+| `search <query>` | BM25 search (`--agent`, `--category`, `--limit`) |
+| `inject preview <agentId> [command...]` | Print the same memory block as `buildTextBlock(buildContext(...))` |
+| `compact` | Run full compaction (checkpoints, conversations, vault cap, index rebuild) |
+| `migrate` | Migrate flat `*.md` per agent into vault layout |
+
+Categories for vault commands must be one of: `decisions`, `lessons`, `tasks`, `projects`, `handoffs`.
+
+### Examples
+
+```bash
+# List agents using a custom memory directory
+agent-memory --dir .memory agents
+
+# Add a decision (tags optional)
+agent-memory vault add bmad-master decisions --content "Adopt SSE for streaming" --tags sse,architecture
+
+# Search and pipe JSON
+agent-memory --json search "authentication" --agent bmad-master
+
+# Preview what the agent would receive for a prompt
+agent-memory inject preview bmad-master "fix the login flow"
+
+# Maintenance
+agent-memory compact
 ```
 
 ## Quick Start
@@ -186,8 +237,10 @@ Use PostgreSQL for the persistence layer. Considered SQLite but need concurrent 
 
 ## Documentation
 
+- [**User Guide**](docs/user-guide.md) — Package overview, installation, core concepts, library and **CLI** usage, BMAD-style integration, troubleshooting
+- [Documentation index](docs/README.md) — Table of contents for all docs
 - [Memory System — Technical Reference](docs/memory-system.md) — Architecture overview, 5-layer design, data flow diagrams, API details, error handling patterns, and system constants
-- [Memory System — User Guide](docs/memory-system-guide.md) — How to use the memory system: vault categories, session lifecycle, context injection, best practices, troubleshooting, and use cases
+- [Memory System — Dashboard Guide](docs/memory-system-guide.md) — Using memory inside an AI agent dashboard (vault UI, session lifecycle, compaction, troubleshooting)
 - [Memory System — Comparison](docs/memory-system-comparison.md) — Detailed comparison with ChatGPT Memory, Claude Memory, OpenClaw Native, and ClawVault
 
 ## Requirements

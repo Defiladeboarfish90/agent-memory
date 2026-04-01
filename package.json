@@ -33,6 +33,9 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "agent-memory": "./dist/cli.js"
+  },
   "files": [
     "dist"
   ],
@@ -43,11 +46,13 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "tsc --noEmit",
+    "pretest": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "commander": "^14.0.3",
     "minisearch": "^7.2.0"
   },
   "devDependencies": {
