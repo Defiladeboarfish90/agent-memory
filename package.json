@@ -20,9 +20,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/INOSX/agent-memory.git"
+    "url": "git+https://github.com/INOSX/agent-memory.git"
   },
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "Mario Mayerle <mario@inosx.com> (https://inosx.com)",
   "type": "module",
   "exports": {
@@ -34,7 +37,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "agent-memory": "./dist/cli.js"
+    "agent-memory": "dist/cli.js"
   },
   "files": [
     "dist"
