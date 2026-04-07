@@ -112,7 +112,7 @@ flowchart TB
 - **Vault writes** are serialized through a `writeQueue` so concurrent markdown updates do not corrupt files.
 - **Compaction** is periodic (e.g. dashboard: ~10 min) or on demand (`POST /api/memory/compact` in the host app); it also caps vault entries per category and writes `compact-log.json`.
 
-**Boundary:** anything that only uses the **library** (`createMemory`) without the dashboard still follows the same disk layout; the “UI” node is replaced by your host (CLI, API route, worker) calling `vault`, `session`, and `inject` explicitly.
+**Boundary:** anything that only uses the **library** (`createMemory`) without the dashboard still follows the same disk layout; the “UI” node is replaced by your host (CLI, API route, worker) calling `vault`, `session`, and `inject` explicitly. For Layer 1, hosts that write `conversations/*.json` can call **`agent-memory sync-checkpoints`** or **`syncCheckpointsFromConversations`** instead of a frontend timer.
 
 ---
 

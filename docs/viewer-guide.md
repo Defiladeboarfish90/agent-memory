@@ -14,6 +14,8 @@ npx @inosx/agent-memory viewer
 
 The viewer reads from the same `.memory/` directory used by the library and CLI.
 
+**Related:** to refresh session checkpoints from `conversations/*.json` without a dashboard timer, run `agent-memory sync-checkpoints` (see [README](../README.md) and [user-guide.md](user-guide.md)).
+
 ## CLI Options
 
 ```bash

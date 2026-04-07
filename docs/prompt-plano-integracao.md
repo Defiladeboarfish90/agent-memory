@@ -46,8 +46,9 @@ Este ficheiro serve para **copiar e colar noutra IA** (ou adaptar num chat). O b
 | **`session`** | Checkpoints de sessão (`checkpoint`, `recover`, `sleep`) com expiração configurável. |
 | **`compact`** | Manutenção: limpar/concentrar conversas, extrair insights, limitar entradas do vault, reconstruir índice. |
 | **`migrate`** | Migração one-way de layouts antigos (ficheiros planos) para o formato vault. |
+| **Export** | `syncCheckpointsFromConversations(mem, { force? })` — alinha `.vault/checkpoints/` a partir de `conversations/*.json` (mensagens `internal` omitidas). |
 
-**CLI:** comandos como `agents`, `project show|edit`, `vault list|get|add|edit|delete`, `search`, `inject preview`, `compact`, `migrate`; opções `--dir`, `AGENT_MEMORY_DIR`, `--json`.
+**CLI:** comandos como `agents`, `project show|edit`, `vault list|get|add|edit|delete`, `search`, `inject preview`, **`sync-checkpoints`**, `compact`, `migrate`; opções `--dir`, `AGENT_MEMORY_DIR`, `--json`.
 
 **Ficheiros relevantes:** `_project.md` (contexto partilhado); por agente, ficheiros por categoria; `conversations/`, `.vault/` (checkpoints, índice, logs de compactação). Documentação detalhada: README e `docs/user-guide.md` do pacote.
 

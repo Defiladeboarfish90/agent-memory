@@ -1,7 +1,7 @@
 # User Guide — @inosx/agent-memory
 
 **Audience:** Developers integrating file-based agent memory into Node.js applications, or operators managing memory via the CLI.  
-**Updated:** 2026-04-01
+**Updated:** 2026-04-07
 
 ---
 
@@ -13,6 +13,7 @@
 - **BM25 search** — Find relevant entries for a user command.
 - **Context injection** — Assemble a bounded text block (project context, handoff, decisions, lessons, tasks) for prompts.
 - **Session checkpoints** — Optional save/recover of recent messages with expiry.
+- **Checkpoint sync** — Align `.vault/checkpoints/` from `conversations/*.json` via CLI or `syncCheckpointsFromConversations()` when you do not rely on a dashboard timer.
 - **Compaction** — Maintenance: trim conversations, cap vault size, rebuild search index, migrate legacy layouts.
 - **CLI** — The `agent-memory` command for reading, editing, and scripting without writing code.
 
@@ -107,6 +108,16 @@ const block = mem.inject.buildTextBlock(ctx);
 await mem.compact.run();
 ```
 
+**Sync checkpoints** from conversation JSON files (same logic as CLI `sync-checkpoints`; skips `internal` messages):
+
+```typescript
+import { createMemory, syncCheckpointsFromConversations } from "@inosx/agent-memory";
+
+const mem = createMemory({ dir: ".memory" });
+const { synced, skipped, errors } = await syncCheckpointsFromConversations(mem);
+// Optional: { force: true } to overwrite even when checkpoint looks newer
+```
+
 **Migration** from older flat `AgentName.md` files in the memory root:
 
 ```typescript
@@ -185,6 +196,18 @@ Shows the same markdown block your app would inject for a given agent and user t
 ```bash
 agent-memory inject preview bmad-master "review error handling"
 ```
+
+### Session checkpoints from conversation files
+
+If your host writes `.memory/conversations/{agentId}.json` but does not run the dashboard’s ~30s timer, align checkpoints with:
+
+```bash
+agent-memory sync-checkpoints              # only when conversation is newer than checkpoint
+agent-memory sync-checkpoints --force      # always rewrite from conversation files
+agent-memory --json sync-checkpoints       # machine-readable { synced, skipped, errors }
+```
+
+See [memory-system.md](memory-system.md) (Layer 1) for timestamp rules and the programmatic API.
 
 ### Maintenance
 

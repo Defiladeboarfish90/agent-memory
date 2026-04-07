@@ -1,7 +1,7 @@
 # Memory System Guide
 
 **For:** Users of AI agent dashboards with @inosx/agent-memory  
-**Updated:** 2026-04-01  
+**Updated:** 2026-04-07  
 **Version:** 3.0
 
 > **Using the npm package only (no dashboard)?** See the [User Guide](user-guide.md) for installation, CLI, and library usage in standalone projects.
@@ -94,6 +94,16 @@ Open chat
 ```
 
 **The automatic checkpoint every 30s** protects the conversation content. Even if the window closes unexpectedly, the history is preserved on disk for up to 7 days.
+
+### Hosts without the dashboard timer
+
+If your integration writes `conversations/{agentId}.json` but **does not** run the same periodic checkpoint logic as the reference dashboard, use the package CLI (or library API) to align checkpoints before relying on `recover` / injection:
+
+```bash
+agent-memory sync-checkpoints [--dir .memory] [--json] [--force]
+```
+
+Equivalent in code: `syncCheckpointsFromConversations(createMemory({ dir }), options)` (exported from `@inosx/agent-memory`). Details: [memory-system.md](memory-system.md) and [user-guide.md](user-guide.md).
 
 ---
 
