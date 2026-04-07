@@ -34,6 +34,8 @@ The package also installs a command-line tool named `agent-memory`. You can run 
 - `npx agent-memory --help` (from a project that depends on the package), or  
 - `npx @inosx/agent-memory --help` if you prefer invoking the package name directly.
 
+**Cursor:** `npm install` runs a **postinstall** script that copies the default rule `memory-five-layers.mdc` into **`.cursor/rules/`** in your project (quiet unless `AGENT_MEMORY_VERBOSE=1`). To skip: `AGENT_MEMORY_SKIP_CURSOR_RULE=1`. See the root [README](../README.md#cursor-rule-automatic).
+
 ---
 
 ## Core concepts

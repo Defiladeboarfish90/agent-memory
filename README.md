@@ -16,6 +16,7 @@ Built and battle-tested inside [AITEAM-X](https://github.com/INOSX/AITeam), extr
 - **Migration** — One-way migration from flat markdown to structured vault format
 - **CLI** — `agent-memory` command to list agents, manage vault entries, search, edit project context, preview injection, **sync checkpoints from conversation files**, run compaction, and migrate
 - **Viewer** — Built-in standalone web dashboard to browse agents, vault entries, search, and run compaction — zero extra dependencies
+- **Cursor** — Default project rule (five memory layers + `sync-checkpoints`) installed via `postinstall` into `.cursor/rules/`
 
 ## Install
 
@@ -24,6 +25,15 @@ npm install @inosx/agent-memory
 ```
 
 The package exposes a `bin` named `agent-memory` (also available via `npx @inosx/agent-memory` after install).
+
+### Cursor rule (automatic)
+
+On `npm install`, a **lifecycle script** copies `memory-five-layers.mdc` into your project’s **`.cursor/rules/`** (creates folders if needed). No extra steps in normal setups.
+
+- **Disable:** `AGENT_MEMORY_SKIP_CURSOR_RULE=1 npm install` (or set in `.npmrc` / CI env).
+- **Silent by default** — set `AGENT_MEMORY_VERBOSE=1` to print the destination path.
+- **Skipped** when: `CI=true`, global npm install, or while developing this repository (not installed from `node_modules`).
+- **Publishing:** run `npm run sync:cursor-rule` after editing [`.cursor/rules/memory-five-layers.mdc`](.cursor/rules/memory-five-layers.mdc) so [`cursor-rules/`](cursor-rules/) matches before release (`prepublishOnly` runs this automatically).
 
 ## CLI
 

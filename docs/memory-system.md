@@ -178,7 +178,7 @@ For each JSON file in `conversations/`, the command compares the conversation’
 
 Programmatic equivalent: `syncCheckpointsFromConversations(createMemory({ dir }), options)` from the package root export.
 
-**Cursor:** this repo includes `.cursor/rules/memory-five-layers.mdc` (`alwaysApply`) so agents are reminded to run this command when working with Layer 1 files.
+**Cursor:** installing `@inosx/agent-memory` runs **postinstall** and copies the same rule into the consumer project’s `.cursor/rules/memory-five-layers.mdc` (`alwaysApply`). Disable with `AGENT_MEMORY_SKIP_CURSOR_RULE=1` if needed.
 
 ### Session API (`lib/memory/session.ts`)
 

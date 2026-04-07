@@ -34,7 +34,7 @@ Este ficheiro serve para **copiar e colar noutra IA** (ou adaptar num chat). O b
 
 `@inosx/agent-memory` é um sistema de memória **baseado em ficheiros Markdown** (sem base de dados). Ponto de montagem típico: diretório **`.memory`** (ou outro via `dir` / `AGENT_MEMORY_DIR` / `--dir` na CLI).
 
-**Instalação:** `npm install @inosx/agent-memory`. Expõe o binário **`agent-memory`** (ou `npx @inosx/agent-memory`). Requer **Node.js ≥ 18**.
+**Instalação:** `npm install @inosx/agent-memory`. Expõe o binário **`agent-memory`** (ou `npx @inosx/agent-memory`). Requer **Node.js ≥ 18**. O **postinstall** copia uma regra Cursor por defeito para `.cursor/rules/` no projeto consumidor (desativar: `AGENT_MEMORY_SKIP_CURSOR_RULE=1`).
 
 **API principal:** `createMemory({ dir, ... })` devolve um objeto com:
 

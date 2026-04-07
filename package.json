@@ -1,6 +1,6 @@
 {
   "name": "@inosx/agent-memory",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "File-based memory system for AI agents — vault, search, context injection, session checkpoints, and compaction",
   "keywords": [
     "ai",
@@ -40,7 +40,9 @@
     "agent-memory": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "cursor-rules",
+    "scripts"
   ],
   "engines": {
     "node": ">=18"
@@ -52,10 +54,11 @@
     "pretest": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build && node scripts/sync-cursor-rule.mjs",
+    "postinstall": "node scripts/postinstall.mjs",
+    "sync:cursor-rule": "node scripts/sync-cursor-rule.mjs"
   },
   "dependencies": {
-    "@inosx/agent-memory": "^0.3.0",
     "commander": "^14.0.3",
     "minisearch": "^7.2.0"
   },
