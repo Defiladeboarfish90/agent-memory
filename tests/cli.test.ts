@@ -51,4 +51,13 @@ describe("agent-memory CLI", () => {
     expect(data.migrated).toEqual([]);
     expect(data.skipped).toEqual([]);
   });
+
+  it("sync-checkpoints returns empty result when no conversations", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "am-cli-"));
+    const out = runCli(["--dir", dir, "--json", "sync-checkpoints"], process.cwd());
+    const data = JSON.parse(out) as { synced: string[]; skipped: string[]; errors: unknown[] };
+    expect(data.synced).toEqual([]);
+    expect(data.skipped).toEqual([]);
+    expect(data.errors).toEqual([]);
+  });
 });

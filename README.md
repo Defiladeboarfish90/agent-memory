@@ -14,7 +14,7 @@ Built and battle-tested inside [AITEAM-X](https://github.com/INOSX/AITeam), extr
 - **Session checkpoints** — Save and recover agent sessions with automatic expiry
 - **Compaction** — Extract insights from conversations, trim old messages, cap vault entries
 - **Migration** — One-way migration from flat markdown to structured vault format
-- **CLI** — `agent-memory` command to list agents, manage vault entries, search, edit project context, preview injection, run compaction, and migrate
+- **CLI** — `agent-memory` command to list agents, manage vault entries, search, edit project context, preview injection, **sync checkpoints from conversation files**, run compaction, and migrate
 - **Viewer** — Built-in standalone web dashboard to browse agents, vault entries, search, and run compaction — zero extra dependencies
 
 ## Install
@@ -49,6 +49,7 @@ Global options (place before the subcommand, e.g. `agent-memory --dir ./.memory 
 | `vault delete <agentId> <category> <id>` | Remove entry; use `--force` in non-interactive scripts |
 | `search <query>` | BM25 search (`--agent`, `--category`, `--limit`) |
 | `inject preview <agentId> [command...]` | Print the same memory block as `buildTextBlock(buildContext(...))` |
+| `sync-checkpoints` | Copy `conversations/*.json` → `.vault/checkpoints/` when newer (optional `--force`) |
 | `compact` | Run full compaction (checkpoints, conversations, vault cap, index rebuild) |
 | `migrate` | Migrate flat `*.md` per agent into vault layout |
 | `viewer` | Launch the standalone web dashboard (`--port`, `--no-open`) |
@@ -69,6 +70,9 @@ agent-memory --json search "authentication" --agent bmad-master
 
 # Preview what the agent would receive for a prompt
 agent-memory inject preview bmad-master "fix the login flow"
+
+# Align checkpoints with conversation JSON (e.g. Cursor / scripts; no dashboard required)
+agent-memory sync-checkpoints
 
 # Maintenance
 agent-memory compact
@@ -179,6 +183,14 @@ The search index auto-syncs with vault operations — manual index management is
 | `checkpoint(agentId, messages, chatId?, modelId?)` | Save a session checkpoint (keeps last 50 messages) |
 | `recover(agentId)` | Load checkpoint if it exists and hasn't expired |
 | `sleep(agentId, messages, summary)` | Save handoff + final checkpoint |
+
+### `syncCheckpointsFromConversations`
+
+| Export | Description |
+|--------|-------------|
+| `syncCheckpointsFromConversations(mem, { force? })` | Read `conversations/*.json` under `mem.config.dir` and call `session.checkpoint` when the conversation `savedAt` is newer than the checkpoint (or checkpoint missing). Skips messages with `internal: true`. |
+
+Same behaviour as CLI `sync-checkpoints`.
 
 ### `mem.inject`
 

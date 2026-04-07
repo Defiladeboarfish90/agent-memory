@@ -166,6 +166,20 @@ Automatically saved every 30s by the frontend for each agent with an open bubble
 
 Each checkpoint stores the **last 50 messages** of the conversation.
 
+### CLI: `sync-checkpoints` (dashboard-independent)
+
+Hosts that write `conversations/{agentId}.json` but do **not** run a dashboard timer can align checkpoints with:
+
+```bash
+agent-memory sync-checkpoints [--dir .memory] [--json] [--force]
+```
+
+For each JSON file in `conversations/`, the command compares the conversation’s `savedAt` (ISO string, Unix ms, or file `mtime` if absent) to `.vault/checkpoints/{agentId}.json`’s `savedAt`. It writes a checkpoint only when the conversation is newer, unless `--force` is set. Messages with `internal: true` are omitted (same convention as handoffs/checkpoints in integrated UIs).
+
+Programmatic equivalent: `syncCheckpointsFromConversations(createMemory({ dir }), options)` from the package root export.
+
+**Cursor:** this repo includes `.cursor/rules/memory-five-layers.mdc` (`alwaysApply`) so agents are reminded to run this command when working with Layer 1 files.
+
 ### Session API (`lib/memory/session.ts`)
 
 ```typescript

@@ -11,6 +11,7 @@ import { Command } from "commander";
 import { createMemory } from "./index.js";
 import { DEFAULT_CATEGORIES } from "./types.js";
 import { startViewer } from "./viewer.js";
+import { syncCheckpointsFromConversations } from "./sync-checkpoints.js";
 import type { AgentMemory } from "./index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -423,6 +424,36 @@ async function main(): Promise<void> {
     });
 
   program.addCommand(inject);
+
+  program
+    .command("sync-checkpoints")
+    .description(
+      "Write session checkpoints from conversations/*.json when newer than .vault/checkpoints (or missing)",
+    )
+    .option("--force", "Write checkpoints even when existing checkpoint is newer or same timestamp")
+    .action(async function (this: Command, opts: { force?: boolean }) {
+      const cmd = this;
+      try {
+        const mem = createMem(cmd);
+        const result = await syncCheckpointsFromConversations(mem, { force: !!opts.force });
+        if (getGlobalOpts(cmd).json) {
+          console.log(JSON.stringify(result));
+        } else {
+          if (result.synced.length) console.log(`Synced: ${result.synced.join(", ")}`);
+          if (result.skipped.length) console.log(`Skipped (checkpoint up to date): ${result.skipped.join(", ")}`);
+          if (result.errors.length) {
+            for (const e of result.errors) console.error(`${e.agentId}: ${e.error}`);
+          }
+          if (!result.synced.length && !result.skipped.length && !result.errors.length) {
+            console.log("(no conversation JSON files under conversations/)");
+          }
+        }
+        if (result.errors.length) process.exit(1);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        outError(cmd, msg);
+      }
+    });
 
   program
     .command("compact")

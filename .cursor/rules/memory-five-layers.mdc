@@ -1,0 +1,31 @@
+---
+description: Disciplina das cinco camadas de memória (agent-memory) + sync de checkpoints
+alwaysApply: true
+---
+
+# Memória agent-memory (L1–L5)
+
+Trabalho neste repositório que toque memória em disco (`.memory/` ou integração com o pacote):
+
+## L1 — Sessão / checkpoints
+
+- Se existirem ficheiros em `.memory/conversations/*.json` e o contexto for adequado, corre na raiz do projeto (ou com `AGENT_MEMORY_DIR`):  
+  `npx agent-memory sync-checkpoints`  
+  (ou `node dist/cli.js` após build). Usa `--force` só quando quiseres regravar checkpoints apesar do timestamp.
+- Ignora mensagens `internal` no JSON; o CLI alinha conversas → `.vault/checkpoints/`.
+
+## L2 — Vault
+
+- Mantém formato de entradas Markdown (`id` em comentário HTML, separadores `---`). Não apagar `id` sem substituição consciente.
+
+## L3 — Search (BM25)
+
+- Após edições manuais grandes no vault (fora de `vault append`), considera `agent-memory compact` para reconstruir índice e limites.
+
+## L4 — Inject
+
+- Alterações a `src/inject.ts` ou à ordem de `buildContext`: atualiza testes e docs que descrevem o bloco injetado.
+
+## L5 — Compact
+
+- Alterações a `src/compact.ts` ou limites em `MemoryConfig`: alinha `src/types.ts` / defaults em `createMemory` e documentação.

@@ -94,3 +94,9 @@ export type {
 
 export { DEFAULT_CATEGORIES } from "./types.js";
 export { defaultInsightExtractor } from "./compact.js";
+export {
+  syncCheckpointsFromConversations,
+  type SyncCheckpointsMemory,
+  type SyncCheckpointsOptions,
+  type SyncCheckpointsResult,
+} from "./sync-checkpoints.js";
